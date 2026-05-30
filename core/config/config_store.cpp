@@ -1,6 +1,7 @@
 #include "config/config_store.h"
 #include "controller.h"   // 完整 ControllerConfig 定义
 #include <cstring>
+#include <type_traits>
 
 namespace wp {
 
@@ -8,6 +9,9 @@ namespace wp {
 // 导致 serialize/deserialize 静默错配 —— 届时需把 size 扩成 uint16 并升 version。
 static_assert(sizeof(ControllerConfig) <= 255,
     "ControllerConfig exceeds uint8 size field; widen size field + bump kConfigVersion");
+static_assert(std::is_trivially_copyable<ControllerConfig>::value,
+    "ControllerConfig must stay POD for memcpy serialization; "
+    "adding std::string/std::vector etc. breaks the blob format");
 
 uint16_t crc16_ccitt(const uint8_t* data, size_t len) {
     uint16_t crc = 0xFFFF;
