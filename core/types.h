@@ -8,8 +8,8 @@ constexpr int kNumChannels = 16;
 constexpr int kNumServos = 8;          // 阶段 0~1 固定 8 路
 
 struct ImuSample {
-    float gyro_x, gyro_y, gyro_z;      // deg/s（机体系）
-    float accel_x, accel_y, accel_z;   // g
+    float gyro_x = 0.0f, gyro_y = 0.0f, gyro_z = 0.0f;      // deg/s（机体系）
+    float accel_x = 0.0f, accel_y = 0.0f, accel_z = 0.0f;   // g
     bool  valid = false;
 };
 

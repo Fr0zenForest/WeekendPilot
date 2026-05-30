@@ -42,6 +42,23 @@ void test_mock_absent_probe_fails() {
     TEST_ASSERT_FALSE(baro.probe());
 }
 
+void test_interface_polymorphic_dispatch() {
+    MockBaro baro;
+    baro.present = true;
+    baro.sample.altitude_m = 42.0f; baro.sample.valid = true;
+    IBarometer* p = &baro;                 // 通过基类指针调用
+    BaroSample s{};
+    TEST_ASSERT_TRUE(p->probe());
+    TEST_ASSERT_TRUE(p->read(s));
+    TEST_ASSERT_EQUAL_FLOAT(42.0f, s.altitude_m);
+
+    // read 失败时不污染 out
+    baro.present = false;
+    BaroSample keep{}; keep.altitude_m = 7.0f;
+    TEST_ASSERT_FALSE(p->read(keep));
+    TEST_ASSERT_EQUAL_FLOAT(7.0f, keep.altitude_m);   // 仍为原值
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_tier_enum_ordered);
@@ -49,5 +66,6 @@ int main() {
     RUN_TEST(test_airspeed_sample_defaults_invalid);
     RUN_TEST(test_mock_gyroaccel_probe_and_read);
     RUN_TEST(test_mock_absent_probe_fails);
+    RUN_TEST(test_interface_polymorphic_dispatch);
     return UNITY_END();
 }
