@@ -9,3 +9,4 @@ endfunction()
 
 wp_add_test(test_smoke)
 wp_add_test(test_controller)
+wp_add_test(test_filter)
