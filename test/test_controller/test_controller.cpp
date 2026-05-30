@@ -42,10 +42,45 @@ void test_angle_mode_banked_adds_correction() {
     TEST_ASSERT_TRUE(out.servo[0] != 1500);
 }
 
+void test_standard_throttle_passthrough_equivalent() {
+    wp::Controller c;
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;          // Angle（启用 mixer 路径）
+    in.channels[2] = 1700;          // throttle
+    wp::ServoCommand out = c.update(in);
+    TEST_ASSERT_EQUAL_UINT16(1700, out.servo[2]);   // 1000 + 0.7*1000
+}
+
+void test_peripheral_passthrough_overrides_servo() {
+    wp::ControllerConfig cfg;
+    cfg.peripherals[0] = wp::PeripheralMap{5, 7, true};  // servo5 <- ch8 裸值
+    wp::Controller c; c.setConfig(cfg);
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;          // Angle
+    in.channels[7] = 1234;          // 起落架开关位置
+    wp::ServoCommand out = c.update(in);
+    TEST_ASSERT_EQUAL_UINT16(1234, out.servo[5]);
+}
+
+void test_glimit_softens_pull_in_high_g() {
+    wp::Controller c;
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;          // Angle
+    in.channels[5] = 0;             // gain 0 -> 纯手动，隔离 PID 影响
+    in.channels[1] = 2000;          // 升降满拉 -> pitch_cmd = +1
+    in.imu.accel_z = 10.0f;         // 硬限 -> 拉杆贡献清零
+    wp::ServoCommand out = c.update(in);
+    // pitch 需求被清零 -> 升降回中位
+    TEST_ASSERT_EQUAL_UINT16(1500, out.servo[1]);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_off_mode_is_passthrough);
     RUN_TEST(test_link_lost_forces_passthrough);
     RUN_TEST(test_angle_mode_banked_adds_correction);
+    RUN_TEST(test_standard_throttle_passthrough_equivalent);
+    RUN_TEST(test_peripheral_passthrough_overrides_servo);
+    RUN_TEST(test_glimit_softens_pull_in_high_g);
     return UNITY_END();
 }

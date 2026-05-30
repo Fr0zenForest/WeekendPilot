@@ -3,8 +3,19 @@
 #include "ahrs/ahrs_mahony.h"
 #include "modes/mode_controller.h"
 #include "modes/stab_mode.h"
+#include "mixer/mixer.h"
+#include "safety/glimit.h"
 
 namespace wp {
+
+constexpr int kMaxPeripherals = 4;
+
+// 外设直通：把某 RC 通道裸 us 直接覆盖到某 servo 输出口（起落架/灯/襟翼开关）。
+struct PeripheralMap {
+    uint8_t servo_out = 0;
+    uint8_t rc_channel = 0;
+    bool    enabled = false;
+};
 
 struct ControllerConfig {
     bool enabled = true;
@@ -14,7 +25,12 @@ struct ControllerConfig {
     uint8_t roll_channel = 0;
     uint8_t pitch_channel = 1;
     uint8_t yaw_channel = 3;
+    uint8_t flap_channel = 6;      // ch7，无则保持中位（flap 需求 0）
+    bool    flap_enabled = false;  // 默认不引入 flap 需求
     float throttle_low_us = 1100.0f;
+    Airframe airframe = Airframe::Standard;
+    GLimitConfig glimit;
+    PeripheralMap peripherals[kMaxPeripherals];
     StabConfig stab;
 };
 
@@ -29,6 +45,7 @@ private:
     ControllerConfig cfg_;
     AhrsMahony ahrs_;
     ModeController modes_;
+    Mixer mixer_;
 };
 
 }  // namespace wp
