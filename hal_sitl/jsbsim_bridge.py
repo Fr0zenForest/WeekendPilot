@@ -34,17 +34,20 @@ class CoreController:
             ctypes.c_void_p,
             ctypes.POINTER(ctypes.c_uint16),
             ctypes.POINTER(ctypes.c_float),
+            ctypes.POINTER(ctypes.c_float), ctypes.c_int,
             ctypes.c_float, ctypes.c_int,
             ctypes.c_float, ctypes.c_int,
             ctypes.POINTER(ctypes.c_uint16),
         ]
         self.handle = self.lib.wp_controller_create()
 
-    def update(self, channels16, imu6, baro_alt_m, baro_valid, dt_s, link_ok):
+    def update(self, channels16, imu6, mag3, mag_valid, baro_alt_m, baro_valid, dt_s, link_ok):
         ch = (ctypes.c_uint16 * 16)(*channels16)
         imu = (ctypes.c_float * 6)(*imu6)
+        mag = (ctypes.c_float * 3)(*mag3)
         out = (ctypes.c_uint16 * 8)()
         self.lib.wp_controller_update(self.handle, ch, imu,
+                                      mag, int(mag_valid),
                                       ctypes.c_float(baro_alt_m), int(baro_valid),
                                       ctypes.c_float(dt_s), int(link_ok), out)
         return list(out)
@@ -72,6 +75,38 @@ def read_imu(fdm):
     ay = fdm.get_property_value('accelerations/Ny')
     az = fdm.get_property_value('accelerations/Nz')
     return [gx, gy, gz, ax, ay, az]
+
+
+# Earth magnetic field, normalized, northern-hemisphere inclination 60deg.
+# NED frame: [north, east, down]. Same convention as test_ahrs synth_mag.
+_INCL = math.radians(60.0)
+_B_NED = (math.cos(_INCL), 0.0, math.sin(_INCL))
+
+
+def synth_mag(fdm):
+    """Synthesize a body-frame magnetometer from JSBSim truth attitude.
+    JSBSim has no magnetic field, so rotate a fixed earth field through the
+    truth DCM C_bn = Rx(phi)Ry(theta)Rz(psi). Returns [mx,my,mz] (unit-ish)."""
+    phi = math.radians(fdm.get_property_value('attitude/phi-deg'))
+    th  = math.radians(fdm.get_property_value('attitude/theta-deg'))
+    psi = math.radians(fdm.get_property_value('attitude/psi-deg'))
+    Bn, Be, Bd = _B_NED
+    cph, sph = math.cos(phi), math.sin(phi)
+    cth, sth = math.cos(th),  math.sin(th)
+    cps, sps = math.cos(psi), math.sin(psi)
+    # Rz(psi)
+    x1 =  cps * Bn + sps * Be
+    y1 = -sps * Bn + cps * Be
+    z1 =  Bd
+    # Ry(theta)
+    x2 = cth * x1 - sth * z1
+    y2 = y1
+    z2 = sth * x1 + cth * z1
+    # Rx(phi)
+    mx = x2
+    my = cph * y2 + sph * z2
+    mz = -sph * y2 + cph * z2
+    return [mx, my, mz]
 
 
 def write_servos(fdm, servos8):
