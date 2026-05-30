@@ -37,11 +37,13 @@ def make_fdm(dt):
 
 
 def rc_for_time(t):
-    """Scripted RC. channels us[1000,2000]. ch0 roll, ch1 pitch, ch2 throttle, ch3 yaw."""
+    """Scripted RC. channels us[1000,2000]. ch0 roll, ch1 pitch, ch2 throttle,
+       ch3 yaw, ch4 mode, ch5 gain. Sticks centered, Angle mode at full gain so
+       the stabilizer holds wings level and recovers from a disturbance."""
     ch = [1500] * 16
-    ch[2] = 1700
-    if 2.0 < t < 4.0:
-        ch[0] = 1650
+    ch[2] = 1700       # throttle
+    ch[4] = 1500       # mode = Angle
+    ch[5] = 2000       # gain 100%
     return ch
 
 
@@ -66,6 +68,18 @@ def main():
             alt_m = fdm.get_property_value('position/h-agl-ft') * 0.3048
             servos = core.update(rc_for_time(t), imu6, alt_m, 1, args.dt, 1)
             write_servos(fdm, servos)
+            # Roll disturbance at t~3.0s, applied AFTER the controller writes its
+            # servos but BEFORE fdm.run(), so the dynamics propagate it and the
+            # controller then has to counteract the induced bank.
+            #
+            # NOTE: the originally-specified method (set 'attitude/phi-rad'
+            # +0.35 directly) is a verified NO-OP in JSBSim 1.3.1 -- phi-rad and
+            # p-rad_sec are read-only outputs recomputed from the EOM each step,
+            # so setting them does nothing. The realizable equivalent of a ~20deg
+            # attitude kick is to override the aileron for a short window, which
+            # builds a genuine bank the stabilizer must recover from.
+            if 3.0 <= t < 3.4:
+                fdm.set_property_value('fcs/aileron-cmd-norm', 0.8)  # roll kick
             fdm.run()
             t = fdm.get_sim_time()
             w.writerow([round(t,3),
