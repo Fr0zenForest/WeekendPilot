@@ -38,7 +38,7 @@ void AhrsMahony::update(const ImuSample& imu, const MagSample& mag, float dt) {
 void AhrsMahony::update6DOF(float gx, float gy, float gz,
                             float ax, float ay, float az, float dt) {
     const float alen2 = ax * ax + ay * ay + az * az;
-    if (alen2 > 0.0f) {
+    if (alen2 > alen2_min_ && alen2 < alen2_max_) {
         const float recipNorm = 1.0f / std::sqrt(alen2);
         ax *= recipNorm; ay *= recipNorm; az *= recipNorm;
 
@@ -80,7 +80,7 @@ void AhrsMahony::update9DOF(float gx, float gy, float gz,
                             float ax, float ay, float az,
                             float mx, float my, float mz, float dt) {
     const float alen2 = ax * ax + ay * ay + az * az;
-    if (alen2 > 0.0f) {
+    if (alen2 > alen2_min_ && alen2 < alen2_max_) {
         float recipNorm = 1.0f / std::sqrt(alen2);
         ax *= recipNorm; ay *= recipNorm; az *= recipNorm;
 

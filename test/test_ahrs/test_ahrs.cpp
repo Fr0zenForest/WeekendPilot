@@ -90,6 +90,28 @@ void test_heading_locks_to_mag() {
     TEST_ASSERT_FLOAT_WITHIN(5.0f, 30.0f, a.yaw_deg);
 }
 
+void test_accel_gate_skips_correction_when_out_of_range() {
+    // Feed a constant body roll RATE with a high-magnitude accel (2g, as in a
+    // pull-up / coordinated turn). With the gate, the accel must be IGNORED and
+    // the gyro integrated freely, so roll grows. Without the gate, the high kp
+    // correction from the 2g accel (normalized to same direction as 1g) pins
+    // roll near level.
+    // kp=20 is needed: at that gain the old code pins roll to ~3 deg, the new
+    // gated code lets it reach ~30 deg. Default kp=1 is too weak to show the
+    // difference (normalization removes magnitude info before correction).
+    wp::AhrsMahony ahrs;
+    ahrs.setKp(20.0f);
+    wp::ImuSample s{};
+    s.valid = true;
+    s.gyro_x = 30.0f;                 // +30 deg/s roll rate
+    s.accel_x = 0.0f; s.accel_y = 0.0f; s.accel_z = 2.0f;  // 2g -> |a|^2=4, out of [0.81,1.21]
+    for (int i = 0; i < 1000; ++i) ahrs.update(s, 0.001f);  // 1s -> ~30deg if gyro free
+    wp::Attitude a = ahrs.attitude();
+    // gyro integrates ~30 deg; if accel correction were applied at kp=20 roll
+    // would be pinned to ~3 deg.
+    TEST_ASSERT_TRUE(a.roll_deg > 20.0f);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_level_converges_to_zero_roll_pitch);
@@ -97,5 +119,6 @@ int main() {
     RUN_TEST(test_invalid_mag_falls_back_to_6dof);
     RUN_TEST(test_valid_mag_holds_level);
     RUN_TEST(test_heading_locks_to_mag);
+    RUN_TEST(test_accel_gate_skips_correction_when_out_of_range);
     return UNITY_END();
 }
