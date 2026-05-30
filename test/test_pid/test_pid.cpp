@@ -15,9 +15,9 @@ void test_p_only_proportional_to_error() {
 void test_d_opposes_gyro_motion() {
     wp::PidController pid;
     pid.setGains({0.0f, 0.0f, 0.01f});
-    // error 0; gyro +100 dps; D = -kd*gyro = -1.0 -> clamp to -1
+    // error 0; gyro +100 dps; D = -kd*gyro = -1.0 (at the output limit)
     float out = pid.update(0.0f, 0.0f, 100.0f, 0.001f);
-    TEST_ASSERT_TRUE(out < 0.0f);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, -1.0f, out);
 }
 
 void test_i_accumulates_and_ki_scales_live() {
@@ -43,11 +43,24 @@ void test_back_calc_antiwindup_caps_raw() {
     TEST_ASSERT_TRUE(pid.integralRaw() <= 1.0f + 1e-3f);
 }
 
+void test_ki_rescales_live_nonzero() {
+    wp::PidController pid;
+    pid.setGains({0.0f, 0.1f, 0.0f});
+    for (int i = 0; i < 10; ++i) pid.update(0.5f, 0.0f, 0.0f, 0.1f);  // raw -> ~0.5
+    float out_ki_low = pid.update(0.0f, 0.0f, 0.0f, 0.0f);  // dt=0 -> raw unchanged; out = 0.1*raw
+    // now double ki; same raw -> output should roughly double
+    pid.setGains({0.0f, 0.2f, 0.0f});
+    float out_ki_high = pid.update(0.0f, 0.0f, 0.0f, 0.0f);
+    TEST_ASSERT_TRUE(out_ki_high > out_ki_low);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 2.0f * out_ki_low, out_ki_high);  // exactly 2x
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_p_only_proportional_to_error);
     RUN_TEST(test_d_opposes_gyro_motion);
     RUN_TEST(test_i_accumulates_and_ki_scales_live);
+    RUN_TEST(test_ki_rescales_live_nonzero);
     RUN_TEST(test_back_calc_antiwindup_caps_raw);
     return UNITY_END();
 }
