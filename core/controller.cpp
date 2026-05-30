@@ -52,13 +52,13 @@ ServoCommand Controller::update(const ControlInput& in) {
     demand[static_cast<int>(MixSource::Pitch)] =
         applyGLimit(demand[static_cast<int>(MixSource::Pitch)], in.imu.accel_z, cfg_.glimit);
 
-    // 混控
+    // 混控（覆盖全部 kNumServos：无规则的输出口归中位，AUX 输出靠下方外设表显式路由）
     mixer_.mix(demand, out.servo);
 
     // 外设直通：用裸 RC us 覆盖指定输出口
     for (int i = 0; i < kMaxPeripherals; ++i) {
         const PeripheralMap& p = cfg_.peripherals[i];
-        if (p.enabled && p.servo_out < kNumServos)
+        if (p.enabled && p.servo_out < kNumServos && p.rc_channel < kNumChannels)
             out.servo[p.servo_out] = in.channels[p.rc_channel];
     }
     return out;

@@ -74,6 +74,39 @@ void test_glimit_softens_pull_in_high_g() {
     TEST_ASSERT_EQUAL_UINT16(1500, out.servo[1]);
 }
 
+void test_flaperon_airframe_routes_flap_to_both_ailerons() {
+    wp::ControllerConfig cfg;
+    cfg.airframe = wp::Airframe::Flaperon;
+    cfg.flap_enabled = true;        // 启用襟翼需求
+    cfg.gain_channel = 5;
+    wp::Controller c; c.setConfig(cfg);
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;          // Angle
+    in.channels[5] = 0;             // gain 0 -> 隔离 PID，纯看混控
+    in.channels[6] = 2000;          // flap 通道满 -> flap 需求 = 1.0
+    wp::ServoCommand out = c.update(in);
+    // Flaperon: servo0 += Flap(+1)*1.0, servo4 += Flap(+1)*1.0 -> 两片副翼同向到满
+    // 摇杆居中 roll=0，所以 servo0 = Flap 1.0 -> 2000；servo4 = -roll*0 + flap 1.0 -> 2000
+    TEST_ASSERT_EQUAL_UINT16(2000, out.servo[0]);
+    TEST_ASSERT_EQUAL_UINT16(2000, out.servo[4]);
+}
+
+void test_flap_disabled_keeps_flap_demand_zero() {
+    wp::ControllerConfig cfg;
+    cfg.airframe = wp::Airframe::Flaperon;
+    cfg.flap_enabled = false;       // 关闭襟翼需求
+    cfg.gain_channel = 5;
+    wp::Controller c; c.setConfig(cfg);
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;          // Angle
+    in.channels[5] = 0;             // gain 0
+    in.channels[6] = 2000;          // flap 通道满，但 flap_enabled=false 应被忽略
+    wp::ServoCommand out = c.update(in);
+    // flap 需求被强制 0，roll 居中 -> servo0/servo4 都回中位 1500
+    TEST_ASSERT_EQUAL_UINT16(1500, out.servo[0]);
+    TEST_ASSERT_EQUAL_UINT16(1500, out.servo[4]);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_off_mode_is_passthrough);
@@ -82,5 +115,7 @@ int main() {
     RUN_TEST(test_standard_throttle_passthrough_equivalent);
     RUN_TEST(test_peripheral_passthrough_overrides_servo);
     RUN_TEST(test_glimit_softens_pull_in_high_g);
+    RUN_TEST(test_flaperon_airframe_routes_flap_to_both_ailerons);
+    RUN_TEST(test_flap_disabled_keeps_flap_demand_zero);
     return UNITY_END();
 }
