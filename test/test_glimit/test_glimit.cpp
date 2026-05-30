@@ -42,6 +42,24 @@ void test_disabled_passes_through() {
     TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.8f, out);
 }
 
+void test_inverted_convention_attenuates_negative_pull() {
+    // 装反约定：pitch_loads_positive=false -> 拉杆是负 pitch，加载对应负 accel_z
+    wp::GLimitConfig cfg; cfg.pitch_loads_positive = false;
+    // g = -accel_z = 8 ; pulling = (demand<0) = true ; k = 1-(8-6)/4 = 0.5
+    float out = wp::applyGLimit(-0.8f, -8.0f, cfg);
+    TEST_ASSERT_FLOAT_WITHIN(1e-5f, -0.4f, out);
+    // 同约定下，正 pitch（此时是卸载方向）不被限制
+    float out2 = wp::applyGLimit(0.8f, -8.0f, cfg);
+    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.8f, out2);
+}
+
+void test_misconfigured_span_zeroes_pull() {
+    // hard_g <= soft_g 误配：span<=0 -> k=0，超软限即清零拉杆（失效偏保守）
+    wp::GLimitConfig cfg; cfg.soft_g = 6.0f; cfg.hard_g = 6.0f;
+    float out = wp::applyGLimit(0.8f, 9.0f, cfg);   // g>soft, pulling, span=0 -> k=0
+    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.0f, out);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_below_soft_limit_unchanged);
@@ -50,5 +68,7 @@ int main() {
     RUN_TEST(test_beyond_hard_limit_zeroed);
     RUN_TEST(test_push_stick_not_limited);
     RUN_TEST(test_disabled_passes_through);
+    RUN_TEST(test_inverted_convention_attenuates_negative_pull);
+    RUN_TEST(test_misconfigured_span_zeroes_pull);
     return UNITY_END();
 }
