@@ -18,9 +18,15 @@ struct BaroSample {
     bool  valid = false;
 };
 
+struct MagSample {
+    float mag_x = 0.0f, mag_y = 0.0f, mag_z = 0.0f;  // 机体系，任意单位（AHRS 内部归一化）
+    bool  valid = false;
+};
+
 struct ControlInput {
     uint16_t channels[kNumChannels];   // RC us 值 [1000,2000]
     ImuSample imu;
+    MagSample mag;
     BaroSample baro;
     float dt;                          // 距上次 update 的秒数
     bool  link_ok = true;              // CRSF 链路有效
