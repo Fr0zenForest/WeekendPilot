@@ -8,3 +8,4 @@ function(wp_add_test name)
 endfunction()
 
 wp_add_test(test_smoke)
+wp_add_test(test_controller)
