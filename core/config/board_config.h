@@ -32,6 +32,9 @@ constexpr int kPinGpsRx  = 5;       // MCU RX <- 模块 TX
 constexpr int kPinGpsTx  = 4;       // MCU TX -> 模块 RX
 constexpr int kGpsBaud   = 38400;   // 模块默认波特率
 
+// MS4525DO 差压空速管（挂主 I2C 总线，地址不撞 IMU/Baro/Mag）
+constexpr int kAddrAirspeed = 0x28;
+
 // PWM 8 路（§6.3）
 constexpr int kPwmPins[8] = {1, 2, 8, 9, 10, 15, 16, 17};
 

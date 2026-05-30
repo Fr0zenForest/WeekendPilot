@@ -26,6 +26,7 @@ void test_board_pins_defined() {
     TEST_ASSERT_EQUAL_INT(5, kPinGpsRx);     // MCU 收 = 模块 TX
     TEST_ASSERT_EQUAL_INT(4, kPinGpsTx);     // MCU 发 = 模块 RX
     TEST_ASSERT_EQUAL_INT(38400, kGpsBaud);
+    TEST_ASSERT_EQUAL_INT(0x28, kAddrAirspeed);  // MS4525DO 挂主 I2C
 }
 
 void test_serialize_roundtrip_preserves_config() {
