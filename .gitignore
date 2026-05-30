@@ -1,0 +1,16 @@
+# build outputs
+/build/
+.pio/
+*.o
+*.a
+*.bin
+*.elf
+# python
+__pycache__/
+*.pyc
+# editor
+.vscode/
+.idea/
+# sim logs
+*.csv
+*.flightgear.log
