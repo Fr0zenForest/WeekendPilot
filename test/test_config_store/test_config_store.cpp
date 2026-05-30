@@ -10,6 +10,8 @@ void test_pc_test_build_enables_all_capabilities() {
     TEST_ASSERT_TRUE(kHasImu);
     TEST_ASSERT_TRUE(kHasBaro);
     TEST_ASSERT_TRUE(kHasMag);
+    TEST_ASSERT_TRUE(kHasGps);
+    TEST_ASSERT_TRUE(kHasAirspeed);
 }
 
 void test_board_pins_defined() {

@@ -8,6 +8,9 @@
 //
 // "全写好先不使能"：功能代码恒编译进 core（PC 全开可验）；板载侧用这些宏 +
 // 运行时 probe() 双重门控决定是否激活。硬件到货改一个 -D 即 enable。
+//
+// 注：板载门控路径（BOARD_* 场景）无法在 PC ctest 覆盖，只能靠编译期；
+//     如需验证板载组合，用 `pio run -e weekendpilot_s3` 编译检查。
 
 // PC/测试构建（无 BOARD_* 宏）默认全开
 #if !defined(BOARD_DEVKIT_S3)
