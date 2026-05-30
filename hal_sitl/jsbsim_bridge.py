@@ -39,6 +39,8 @@ class CoreController:
             ctypes.c_float, ctypes.c_int,
             ctypes.POINTER(ctypes.c_uint16),
         ]
+        self.lib.wp_controller_attitude.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_float)]
         self.handle = self.lib.wp_controller_create()
 
     def update(self, channels16, imu6, mag3, mag_valid, baro_alt_m, baro_valid, dt_s, link_ok):
@@ -51,6 +53,11 @@ class CoreController:
                                       ctypes.c_float(baro_alt_m), int(baro_valid),
                                       ctypes.c_float(dt_s), int(link_ok), out)
         return list(out)
+
+    def attitude(self):
+        rpy = (ctypes.c_float * 3)()
+        self.lib.wp_controller_attitude(self.handle, rpy)
+        return list(rpy)
 
     def __del__(self):
         if getattr(self, 'handle', None):

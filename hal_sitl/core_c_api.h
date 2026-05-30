@@ -14,6 +14,8 @@ void wp_controller_update(void* handle,
                           float dt_s, int link_ok,
                           unsigned short* servos_out);
 
+void wp_controller_attitude(void* handle, float* rpy_out);  // [roll,pitch,yaw] deg
+
 #ifdef __cplusplus
 }
 #endif

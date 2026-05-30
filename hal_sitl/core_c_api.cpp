@@ -28,4 +28,10 @@ void wp_controller_update(void* h,
     std::memcpy(servos_out, out.servo, sizeof(out.servo));
 }
 
+void wp_controller_attitude(void* h, float* rpy_out) {
+    auto* c = static_cast<wp::Controller*>(h);
+    wp::Attitude a = c->attitude();
+    rpy_out[0] = a.roll_deg; rpy_out[1] = a.pitch_deg; rpy_out[2] = a.yaw_deg;
+}
+
 }  // extern "C"
