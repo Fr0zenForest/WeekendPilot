@@ -4,7 +4,9 @@
 void setUp() {}
 void tearDown() {}
 
-static void zero_src(float s[5]) { for (int i = 0; i < 5; ++i) s[i] = 0.0f; }
+static void zero_src(float s[static_cast<int>(wp::MixSource::Count)]) {
+    for (int i = 0; i < static_cast<int>(wp::MixSource::Count); ++i) s[i] = 0.0f;
+}
 
 void test_standard_centered_outputs_1500() {
     wp::Mixer m;  // 默认 Standard

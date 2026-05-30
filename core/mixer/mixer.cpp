@@ -12,7 +12,7 @@ void Mixer::setAirframe(Airframe af) {
     num_rules_ = 0;
     num_outputs_ = kNumServos;
     auto add = [&](uint8_t out, MixSource src, float w) {
-        rules_[num_rules_++] = MixRule{out, src, w};
+        if (num_rules_ < kMaxMixRules) rules_[num_rules_++] = MixRule{out, src, w};
     };
     switch (af) {
         case Airframe::Standard:
@@ -30,7 +30,8 @@ void Mixer::mix(const float src[static_cast<int>(MixSource::Count)],
     float acc[kNumServos] = {0};
     for (int i = 0; i < num_rules_; ++i) {
         const MixRule& r = rules_[i];
-        acc[r.out] += r.weight * src[static_cast<int>(r.src)];
+        if (r.out < kNumServos)
+            acc[r.out] += r.weight * src[static_cast<int>(r.src)];
     }
     for (int i = 0; i < kNumServos; ++i) {
         if (is_throttle_[i]) {
