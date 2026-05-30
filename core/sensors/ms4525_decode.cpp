@@ -13,10 +13,9 @@ Ms4525Raw ms4525Decode(const uint8_t data[4]) {
     int16_t dT_raw = (int16_t)(((uint16_t)data[2] << 8) | data[3]);
     dT_raw = (int16_t)((0xFFE0 & dT_raw) >> 5);
 
-    // 饱和极值丢弃（ArduPilot 同款保护）
-    // ⚠️ dT_raw==0x7FF(2047) 不作为饱和哨兵：ArduPilot 原版有此检查，但会拦截
-    // 温度量程上限合法值；此处仅丢弃绝对零值，与测试对拍。
-    if (dp_raw == 0x3FFF || dp_raw == 0 || dT_raw == 0)
+    // 饱和极值丢弃（ArduPilot AP_Airspeed_MS4525 同款保护）：
+    // dp/dT 的最小 0 与最大码（dp 0x3FFF / dT 0x7FF）视为坏数据/饱和哨兵。
+    if (dp_raw == 0x3FFF || dp_raw == 0 || dT_raw == 0x7FF || dT_raw == 0)
         return r;
 
     // 差压公式（ArduPilot AP_Airspeed_MS4525::_get_pressure，P_max=1psi）
