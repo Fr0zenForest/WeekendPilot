@@ -70,6 +70,25 @@ void test_parse_vtg_fills_ground_speed_and_velned() {
     TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0f, s.vel_ned[2]);  // Down 恒 0
 }
 
+// ⚠️ 数据手册样例报文，非本台实物抓包。
+void test_parse_gga_south_west_negative() {
+    NmeaParser p;
+    feed(p, "$GNGGA,090446.00,2240.62039,S,11359.86703,W,2,12,0.49,98.8,M,-2.7,M,,*61");
+    const GnssSample& s = p.sample();
+    TEST_ASSERT_TRUE(s.valid);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4, -22.677006, (float)s.lat);  // S -> 负
+    TEST_ASSERT_FLOAT_WITHIN(1e-4, -113.997783, (float)s.lon); // W -> 负
+}
+
+void test_bad_checksum_does_not_update_sample() {
+    NmeaParser p;
+    feed(p, "$GNGGA,090446.00,2240.62039,N,11359.86703,E,2,12,0.49,98.8,M,-2.7,M,,*6E"); // good
+    double lat0 = p.sample().lat;
+    // 篡改 payload 但保留原校验 *6E -> 校验失败，应被拒绝
+    feed(p, "$GNGGA,090446.00,9999.99999,N,11359.86703,E,2,12,0.49,98.8,M,-2.7,M,,*6E");
+    TEST_ASSERT_FLOAT_WITHIN(1e-9, lat0, p.sample().lat);  // 未被污染
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_checksum_valid_on_datasheet_rmc);
@@ -80,5 +99,7 @@ int main() {
     RUN_TEST(test_parse_gga_fills_position_and_sats);
     RUN_TEST(test_parse_rmc_status_void_marks_invalid);
     RUN_TEST(test_parse_vtg_fills_ground_speed_and_velned);
+    RUN_TEST(test_parse_gga_south_west_negative);
+    RUN_TEST(test_bad_checksum_does_not_update_sample);
     return UNITY_END();
 }

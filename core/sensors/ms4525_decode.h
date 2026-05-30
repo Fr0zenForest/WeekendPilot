@@ -4,6 +4,9 @@
 
 namespace wp {
 
+// ⚠️ 寄存器布局 + 差压/温度公式移植自 ArduPilot AP_Airspeed_MS4525.cpp，
+// 非数据手册、未在本硬件实测。零点偏置未扣、密度用海平面标准值（实物须标定）。
+
 namespace ms4525 {
     constexpr uint8_t kI2cAddr = 0x28;     // 备选 0x36 / 0x46（ArduPilot）
     constexpr float   kPsiRange = 1.0f;    // MS4525DO 1 psi
