@@ -9,6 +9,7 @@ void test_tier_enum_ordered() {
     TEST_ASSERT_TRUE(static_cast<int>(SensorTier::None) < static_cast<int>(SensorTier::Base));
     TEST_ASSERT_TRUE(static_cast<int>(SensorTier::Base) < static_cast<int>(SensorTier::Plus));
     TEST_ASSERT_TRUE(static_cast<int>(SensorTier::Plus) < static_cast<int>(SensorTier::Pro));
+    TEST_ASSERT_TRUE(static_cast<int>(SensorTier::Pro) < static_cast<int>(SensorTier::Max));
 }
 
 void test_gnss_sample_defaults_invalid() {
