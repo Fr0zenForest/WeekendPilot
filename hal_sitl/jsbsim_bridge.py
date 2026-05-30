@@ -2,7 +2,6 @@
 import ctypes, os, math, shutil
 
 RAD2DEG = 57.29577951308232
-FT_S2_TO_G = 1.0 / 32.174
 
 
 def _ensure_runtime_on_path():
@@ -56,13 +55,22 @@ class CoreController:
 
 
 def read_imu(fdm):
-    """Return [gx,gy,gz deg/s, ax,ay,az g] from JSBSim."""
+    """Return [gx,gy,gz deg/s, ax,ay,az g] from JSBSim.
+
+    JSBSim accelerations/Nx,Ny,Nz are load factors already expressed in g
+    (Nz ~+1.0 in steady level flight), NOT ft/s^2.  The old code divided by
+    32.174 which produced a bogus ~0.03 g gravity reference.
+
+    Sign convention: JSBSim Nz is POSITIVE in level flight (~+1.0 g), which
+    matches the AHRS expectation of accel_z = +1.0 for level (see
+    test/test_ahrs/test_ahrs.cpp level_imu()).  No sign flip is needed.
+    """
     gx = fdm.get_property_value('velocities/p-rad_sec') * RAD2DEG
     gy = fdm.get_property_value('velocities/q-rad_sec') * RAD2DEG
     gz = fdm.get_property_value('velocities/r-rad_sec') * RAD2DEG
-    ax = fdm.get_property_value('accelerations/Nx') * FT_S2_TO_G
-    ay = fdm.get_property_value('accelerations/Ny') * FT_S2_TO_G
-    az = fdm.get_property_value('accelerations/Nz') * FT_S2_TO_G
+    ax = fdm.get_property_value('accelerations/Nx')
+    ay = fdm.get_property_value('accelerations/Ny')
+    az = fdm.get_property_value('accelerations/Nz')
     return [gx, gy, gz, ax, ay, az]
 
 
