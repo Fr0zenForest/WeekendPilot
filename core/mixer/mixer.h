@@ -13,7 +13,7 @@ struct MixRule {
     float     weight;    // 权重（含符号）
 };
 
-constexpr int kMaxMixRules = 24;
+constexpr int kMaxMixRules = 24;  // 余量：最密的 Flaperon 用 6 条，预留自定义混控
 
 class Mixer {
 public:
@@ -29,7 +29,6 @@ private:
     MixRule rules_[kMaxMixRules];
     uint8_t num_rules_ = 0;
     bool    is_throttle_[kNumServos] = {};
-    uint8_t num_outputs_ = kNumServos;
 };
 
 }  // namespace wp

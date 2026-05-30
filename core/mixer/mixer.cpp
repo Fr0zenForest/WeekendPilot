@@ -10,7 +10,6 @@ static float clampf(float v, float lo, float hi) {
 void Mixer::setAirframe(Airframe af) {
     for (int i = 0; i < kNumServos; ++i) is_throttle_[i] = false;
     num_rules_ = 0;
-    num_outputs_ = kNumServos;
     auto add = [&](uint8_t out, MixSource src, float w) {
         if (num_rules_ < kMaxMixRules) rules_[num_rules_++] = MixRule{out, src, w};
     };

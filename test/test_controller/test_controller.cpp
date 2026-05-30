@@ -42,7 +42,7 @@ void test_angle_mode_banked_adds_correction() {
     TEST_ASSERT_TRUE(out.servo[0] != 1500);
 }
 
-void test_standard_throttle_passthrough_equivalent() {
+void test_standard_throttle_routes_through_mixer() {
     wp::Controller c;
     wp::ControlInput in{}; fill_centered(in);
     in.channels[4] = 1500;          // Angle（启用 mixer 路径）
@@ -66,7 +66,7 @@ void test_glimit_softens_pull_in_high_g() {
     wp::Controller c;
     wp::ControlInput in{}; fill_centered(in);
     in.channels[4] = 1500;          // Angle
-    in.channels[5] = 0;             // gain 0 -> 纯手动，隔离 PID 影响
+    in.channels[5] = 1000;          // gain 0 (合法 CRSF 下限) -> 纯手动，隔离 PID 影响
     in.channels[1] = 2000;          // 升降满拉 -> pitch_cmd = +1
     in.imu.accel_z = 10.0f;         // 硬限 -> 拉杆贡献清零
     wp::ServoCommand out = c.update(in);
@@ -112,7 +112,7 @@ int main() {
     RUN_TEST(test_off_mode_is_passthrough);
     RUN_TEST(test_link_lost_forces_passthrough);
     RUN_TEST(test_angle_mode_banked_adds_correction);
-    RUN_TEST(test_standard_throttle_passthrough_equivalent);
+    RUN_TEST(test_standard_throttle_routes_through_mixer);
     RUN_TEST(test_peripheral_passthrough_overrides_servo);
     RUN_TEST(test_glimit_softens_pull_in_high_g);
     RUN_TEST(test_flaperon_airframe_routes_flap_to_both_ailerons);

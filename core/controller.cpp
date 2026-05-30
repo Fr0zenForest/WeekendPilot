@@ -15,6 +15,9 @@ void Controller::setConfig(const ControllerConfig& cfg) {
 
 ServoCommand Controller::update(const ControlInput& in) {
     ServoCommand out{};
+    // TODO(phase3): 失效回退按 servo[i]=channels[i] 直通，仅 Standard 布局正确；
+    // V尾/elevon/flaperon 在失效态会得到错误的舵面映射（见设计文档附录 D 已知限制）。
+    // 后续应让失效回退也走 mixer，喂一个安全 demand。
     // 默认直通所有通道
     for (int i = 0; i < kNumServos; ++i) out.servo[i] = in.channels[i];
 
