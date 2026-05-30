@@ -55,7 +55,16 @@ void test_deserialize_rejects_wrong_version() {
     ControllerConfig cfg{};
     uint8_t buf[kConfigBlobSize];
     uint16_t n = serializeConfig(cfg, buf, sizeof(buf));
-    buf[0] = 0xEE;  // 破坏 magic
+    buf[2] = 0xEE;  // 破坏 version 字节（magic 完好，确保走到 version 检查）
+    ControllerConfig out{};
+    TEST_ASSERT_FALSE(deserializeConfig(buf, n, out));
+}
+
+void test_deserialize_rejects_bad_magic() {
+    ControllerConfig cfg{};
+    uint8_t buf[kConfigBlobSize];
+    uint16_t n = serializeConfig(cfg, buf, sizeof(buf));
+    buf[0] = 0xEE;  // 破坏 magic 低字节
     ControllerConfig out{};
     TEST_ASSERT_FALSE(deserializeConfig(buf, n, out));
 }
@@ -85,6 +94,7 @@ int main() {
     RUN_TEST(test_serialize_roundtrip_preserves_config);
     RUN_TEST(test_deserialize_rejects_bad_crc);
     RUN_TEST(test_deserialize_rejects_wrong_version);
+    RUN_TEST(test_deserialize_rejects_bad_magic);
     RUN_TEST(test_backend_save_load_via_memory);
     RUN_TEST(test_load_returns_false_when_empty);
     return UNITY_END();

@@ -4,12 +4,19 @@
 
 namespace wp {
 
+// size 字段是 buf[3]（uint8）。一旦 ControllerConfig 超过 255 字节，该字段截断会
+// 导致 serialize/deserialize 静默错配 —— 届时需把 size 扩成 uint16 并升 version。
+static_assert(sizeof(ControllerConfig) <= 255,
+    "ControllerConfig exceeds uint8 size field; widen size field + bump kConfigVersion");
+
 uint16_t crc16_ccitt(const uint8_t* data, size_t len) {
     uint16_t crc = 0xFFFF;
     for (size_t i = 0; i < len; ++i) {
         crc ^= static_cast<uint16_t>(data[i]) << 8;
         for (int b = 0; b < 8; ++b)
-            crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : (crc << 1);
+            crc = (crc & 0x8000u)
+                ? static_cast<uint16_t>((crc << 1) ^ 0x1021u)
+                : static_cast<uint16_t>(crc << 1);
     }
     return crc;
 }
@@ -59,6 +66,7 @@ uint16_t MemoryConfigBackend::read(uint8_t* buf, uint16_t cap) {
 }
 
 bool ConfigStore::save(const ControllerConfig& cfg) {
+    if (!backend_) return false;
     uint8_t buf[kConfigBlobSize];
     uint16_t n = serializeConfig(cfg, buf, sizeof(buf));
     if (n == 0) return false;
@@ -66,6 +74,7 @@ bool ConfigStore::save(const ControllerConfig& cfg) {
 }
 
 bool ConfigStore::load(ControllerConfig& out) {
+    if (!backend_) return false;
     uint8_t buf[kConfigBlobSize];
     uint16_t n = backend_->read(buf, sizeof(buf));
     if (n == 0) return false;
