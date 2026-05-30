@@ -151,6 +151,28 @@ void test_elevon_yaw_maps_to_servo3() {
     TEST_ASSERT_EQUAL_UINT16(1500, servo[1]);
 }
 
+void test_elevon_saturation_clamps_per_channel() {
+    wp::Mixer m; m.setAirframe(wp::Airframe::Elevon);
+    float src[static_cast<int>(wp::MixSource::Count)]; zero_src(src);
+    src[(int)wp::MixSource::Roll]  = 0.8f;
+    src[(int)wp::MixSource::Pitch] = 0.8f;
+    // servo0 = +0.8 +0.8 = 1.6 -> clamp 1.0 -> 2000
+    // servo1 = -0.8 +0.8 = 0.0 -> 1500
+    uint16_t servo[wp::kNumServos];
+    m.mix(src, servo);
+    TEST_ASSERT_EQUAL_UINT16(2000, servo[0]);
+    TEST_ASSERT_EQUAL_UINT16(1500, servo[1]);
+}
+
+void test_throttle_clamps_below_zero() {
+    wp::Mixer m;  // Standard
+    float src[static_cast<int>(wp::MixSource::Count)]; zero_src(src);
+    src[(int)wp::MixSource::Throttle] = -0.5f;   // 异常负值
+    uint16_t servo[wp::kNumServos];
+    m.mix(src, servo);
+    TEST_ASSERT_EQUAL_UINT16(1000, servo[2]);     // clamp 到 0 -> 1000
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_standard_centered_outputs_1500);
@@ -165,5 +187,7 @@ int main() {
     RUN_TEST(test_new_presets_throttle_channel_is_throttle);
     RUN_TEST(test_vtail_roll_maps_to_aileron);
     RUN_TEST(test_elevon_yaw_maps_to_servo3);
+    RUN_TEST(test_elevon_saturation_clamps_per_channel);
+    RUN_TEST(test_throttle_clamps_below_zero);
     return UNITY_END();
 }
