@@ -19,7 +19,6 @@ private:
     HardwareSerial& uart_;
     int rx_, tx_, baud_;
     NmeaParser parser_;
-    bool gotSentence_ = false;
 };
 
 }  // namespace wp

@@ -9,20 +9,20 @@ bool GnssNmea::probe() {
     uint32_t t0 = millis();
     while (millis() - t0 < 1200) {
         while (uart_.available()) {
-            if (parser_.pushByte((char)uart_.read())) { gotSentence_ = true; return true; }
+            if (parser_.pushByte((char)uart_.read())) return true;
         }
     }
     return false;   // 没插 GPS / 没接对 -> probe 失败，Frontend 不计入 has_gnss
 }
 
 bool GnssNmea::read(GnssSample& out) {
-    bool any = false;
     while (uart_.available()) {
-        if (parser_.pushByte((char)uart_.read())) any = true;
+        parser_.pushByte((char)uart_.read());
     }
-    if (!any && !gotSentence_) return false;  // 无任何句过
-    out = parser_.sample();                    // 含 valid 标志
-    return out.valid;                          // ⚠️ 契约：无效定位返回 false 不污染
+    const GnssSample& s = parser_.sample();
+    if (!s.valid) return false;   // ⚠️ 契约：无效/无定位返回 false，out 保持不变（不污染）
+    out = s;
+    return true;
 }
 
 }  // namespace wp
