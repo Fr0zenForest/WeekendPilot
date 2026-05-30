@@ -63,11 +63,14 @@ void test_interface_polymorphic_dispatch() {
 void test_frontend_passthrough_fills_bundle() {
     MockGyroAccel imu; imu.present = true;
     imu.sample.gyro_x = 2.0f; imu.sample.valid = true;
+    MockMag mag; mag.present = true;
+    mag.sample.mag_x = 0.5f; mag.sample.valid = true;
     MockBaro baro; baro.present = true;
     baro.sample.altitude_m = 123.0f; baro.sample.valid = true;
 
     SensorFrontend fe;
     fe.setGyroAccel(&imu);
+    fe.setMagnetometer(&mag);
     fe.setBarometer(&baro);
     fe.begin();                 // 调 probe+init
 
@@ -77,6 +80,7 @@ void test_frontend_passthrough_fills_bundle() {
     TEST_ASSERT_EQUAL_FLOAT(2.0f, b.imu.gyro_x);
     TEST_ASSERT_TRUE(b.baro.valid);
     TEST_ASSERT_EQUAL_FLOAT(123.0f, b.baro.altitude_m);
+    TEST_ASSERT_EQUAL_INT((int)SensorTier::Base, (int)fe.tier());  // 合法 Base 档
 }
 
 void test_tier_base_requires_imu_mag_baro() {
@@ -118,6 +122,17 @@ void test_absent_sensor_leaves_bundle_invalid() {
     TEST_ASSERT_FALSE(b.imu.valid);
 }
 
+void test_tier_airspeed_without_gps_stays_base() {
+    // pro 需 gnss && air；只有 air 无 gnss 应停在 Base，不升 Plus/Pro
+    MockGyroAccel imu; MockMag mag; MockBaro baro; MockAirspeed air;
+    imu.present = mag.present = baro.present = air.present = true;
+    SensorFrontend fe;
+    fe.setGyroAccel(&imu); fe.setMagnetometer(&mag);
+    fe.setBarometer(&baro); fe.setAirspeed(&air);
+    fe.begin();
+    TEST_ASSERT_EQUAL_INT((int)SensorTier::Base, (int)fe.tier());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_tier_enum_ordered);
@@ -131,5 +146,6 @@ int main() {
     RUN_TEST(test_tier_none_without_mag);
     RUN_TEST(test_tier_plus_with_gps);
     RUN_TEST(test_absent_sensor_leaves_bundle_invalid);
+    RUN_TEST(test_tier_airspeed_without_gps_stays_base);
     return UNITY_END();
 }

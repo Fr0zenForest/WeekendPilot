@@ -2,11 +2,9 @@
 
 namespace wp {
 
-static bool probeInit(IGyroAccel* p)    { return p && p->probe() && p->init(); }
-static bool probeInit(IMagnetometer* p) { return p && p->probe() && p->init(); }
-static bool probeInit(IBarometer* p)    { return p && p->probe() && p->init(); }
-static bool probeInit(IGnss* p)         { return p && p->probe() && p->init(); }
-static bool probeInit(IAirspeed* p)     { return p && p->probe() && p->init(); }
+// probe + init 的统一封装：指针非空且 probe、init 都成功才算在位。
+template <typename T>
+static bool probeInit(T* p) { return p && p->probe() && p->init(); }
 
 void SensorFrontend::begin() {
     has_imu  = probeInit(gyro_);
