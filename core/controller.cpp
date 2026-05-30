@@ -67,4 +67,17 @@ ServoCommand Controller::update(const ControlInput& in) {
     return out;
 }
 
+ServoCommand Controller::updateFromBundle(const uint16_t channels[kNumChannels],
+                                          const SensorBundle& bundle,
+                                          float dt, bool link_ok) {
+    ControlInput in{};
+    for (int i = 0; i < kNumChannels; ++i) in.channels[i] = channels[i];
+    in.imu  = bundle.imu;
+    in.mag  = bundle.mag;
+    in.baro = bundle.baro;
+    in.dt = dt;
+    in.link_ok = link_ok;
+    return update(in);
+}
+
 }  // namespace wp

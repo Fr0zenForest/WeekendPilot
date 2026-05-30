@@ -1,5 +1,6 @@
 #include <unity.h>
 #include "controller.h"
+#include "sensors/sensor_frontend.h"
 
 void setUp() {}
 void tearDown() {}
@@ -107,6 +108,29 @@ void test_flap_disabled_keeps_flap_demand_zero() {
     TEST_ASSERT_EQUAL_UINT16(1500, out.servo[4]);
 }
 
+void test_update_from_bundle_matches_control_input() {
+    // 同样的传感器数 + 通道，updateFromBundle 与手填 ControlInput 应得到相同 servo
+    wp::Controller a, b;
+    wp::SensorBundle bundle{};
+    bundle.imu.gyro_x = 5.0f; bundle.imu.accel_z = 1.0f; bundle.imu.valid = true;
+
+    uint16_t ch[wp::kNumChannels];
+    for (int i = 0; i < wp::kNumChannels; ++i) ch[i] = 1500;
+    ch[4] = 1500;  // Angle 模式
+    float dt = 0.002f;
+
+    wp::ServoCommand viaBundle = a.updateFromBundle(ch, bundle, dt, true);
+
+    wp::ControlInput in{};
+    for (int i = 0; i < wp::kNumChannels; ++i) in.channels[i] = ch[i];
+    in.imu = bundle.imu; in.mag = bundle.mag; in.baro = bundle.baro;
+    in.dt = dt; in.link_ok = true;
+    wp::ServoCommand viaInput = b.update(in);
+
+    for (int i = 0; i < wp::kNumServos; ++i)
+        TEST_ASSERT_EQUAL_UINT16(viaInput.servo[i], viaBundle.servo[i]);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_off_mode_is_passthrough);
@@ -117,5 +141,6 @@ int main() {
     RUN_TEST(test_glimit_softens_pull_in_high_g);
     RUN_TEST(test_flaperon_airframe_routes_flap_to_both_ailerons);
     RUN_TEST(test_flap_disabled_keeps_flap_demand_zero);
+    RUN_TEST(test_update_from_bundle_matches_control_input);
     return UNITY_END();
 }
