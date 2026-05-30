@@ -36,10 +36,23 @@ void test_rate_mode_opposes_rotation() {
     TEST_ASSERT_TRUE(c.roll < 0.0f);   // opposes the +50dps roll
 }
 
+void test_yaw_is_rate_controlled_in_angle_mode() {
+    wp::ModeController mc;
+    wp::Attitude att{};                 // level
+    wp::ImuSample imu = zero_imu();
+    imu.gyro_z = 50.0f;                  // yawing right, yaw stick centered -> target rate 0
+    wp::StabCorrection c;
+    for (int i = 0; i < 100; ++i)        // settle blend; mode stays Angle throughout
+        c = mc.update(wp::FlightMode::Angle, 0, 0, 0, att, imu, 0.01f, false);
+    // yaw PID runs even in Angle mode and opposes the +50 dps yaw rate
+    TEST_ASSERT_TRUE(c.yaw < 0.0f);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_off_mode_zero_correction);
     RUN_TEST(test_angle_mode_corrects_toward_level);
     RUN_TEST(test_rate_mode_opposes_rotation);
+    RUN_TEST(test_yaw_is_rate_controlled_in_angle_mode);
     return UNITY_END();
 }
