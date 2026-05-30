@@ -1,0 +1,10 @@
+add_library(unity STATIC ${CMAKE_SOURCE_DIR}/third_party/unity/unity.c)
+target_include_directories(unity PUBLIC ${CMAKE_SOURCE_DIR}/third_party/unity)
+
+function(wp_add_test name)
+  add_executable(${name} ${name}/${name}.cpp)
+  target_link_libraries(${name} PRIVATE wp_core unity)
+  add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
+wp_add_test(test_smoke)
