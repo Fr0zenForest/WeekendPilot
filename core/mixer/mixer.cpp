@@ -15,6 +15,25 @@ void Mixer::setAirframe(Airframe af) {
         if (num_rules_ < kMaxMixRules) rules_[num_rules_++] = MixRule{out, src, w};
     };
     switch (af) {
+        case Airframe::Flaperon:
+            add(0, MixSource::Roll, +1.0f); add(0, MixSource::Flap, +1.0f);
+            add(1, MixSource::Pitch,    +1.0f);
+            add(2, MixSource::Throttle, +1.0f); is_throttle_[2] = true;
+            add(3, MixSource::Yaw,      +1.0f);
+            add(4, MixSource::Roll, -1.0f); add(4, MixSource::Flap, +1.0f);
+            break;
+        case Airframe::VTail:
+            add(0, MixSource::Roll,     +1.0f);
+            add(1, MixSource::Pitch, +1.0f); add(1, MixSource::Yaw, +1.0f);
+            add(2, MixSource::Throttle, +1.0f); is_throttle_[2] = true;
+            add(3, MixSource::Pitch, +1.0f); add(3, MixSource::Yaw, -1.0f);
+            break;
+        case Airframe::Elevon:
+            add(0, MixSource::Roll, +1.0f); add(0, MixSource::Pitch, +1.0f);
+            add(1, MixSource::Roll, -1.0f); add(1, MixSource::Pitch, +1.0f);
+            add(2, MixSource::Throttle, +1.0f); is_throttle_[2] = true;
+            add(3, MixSource::Yaw,      +1.0f);
+            break;
         case Airframe::Standard:
         default:
             add(0, MixSource::Roll,     +1.0f);
