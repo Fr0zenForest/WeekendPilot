@@ -101,6 +101,56 @@ void test_flaperon_roll_ailerons_differential() {
     TEST_ASSERT_EQUAL_UINT16(1300, servo[4]);
 }
 
+void test_flaperon_combined_roll_and_flap() {
+    wp::Mixer m; m.setAirframe(wp::Airframe::Flaperon);
+    float src[static_cast<int>(wp::MixSource::Count)]; zero_src(src);
+    src[(int)wp::MixSource::Roll] = 0.3f;
+    src[(int)wp::MixSource::Flap] = 0.2f;
+    uint16_t servo[wp::kNumServos];
+    m.mix(src, servo);
+    // servo0 = Roll(+1)*0.3 + Flap(+1)*0.2 = +0.5 -> 1750
+    // servo4 = Roll(-1)*0.3 + Flap(+1)*0.2 = -0.1 -> 1450
+    TEST_ASSERT_EQUAL_UINT16(1750, servo[0]);
+    TEST_ASSERT_EQUAL_UINT16(1450, servo[4]);
+}
+
+void test_new_presets_throttle_channel_is_throttle() {
+    // 确认三种预设的 servo2 都是油门口（src=0 -> 1000，而非 normToServoUs 的 1500）
+    float src[static_cast<int>(wp::MixSource::Count)]; zero_src(src);
+    uint16_t servo[wp::kNumServos];
+    wp::Mixer m;
+    m.setAirframe(wp::Airframe::Flaperon); m.mix(src, servo);
+    TEST_ASSERT_EQUAL_UINT16(1000, servo[2]);
+    m.setAirframe(wp::Airframe::VTail); m.mix(src, servo);
+    TEST_ASSERT_EQUAL_UINT16(1000, servo[2]);
+    m.setAirframe(wp::Airframe::Elevon); m.mix(src, servo);
+    TEST_ASSERT_EQUAL_UINT16(1000, servo[2]);
+}
+
+void test_vtail_roll_maps_to_aileron() {
+    wp::Mixer m; m.setAirframe(wp::Airframe::VTail);
+    float src[static_cast<int>(wp::MixSource::Count)]; zero_src(src);
+    src[(int)wp::MixSource::Roll] = 0.4f;
+    uint16_t servo[wp::kNumServos];
+    m.mix(src, servo);
+    // V尾仍有独立副翼 servo0 = Roll(+1)*0.4 -> 1700；两片尾翼(1,3)不受 roll 影响
+    TEST_ASSERT_EQUAL_UINT16(1700, servo[0]);
+    TEST_ASSERT_EQUAL_UINT16(1500, servo[1]);
+    TEST_ASSERT_EQUAL_UINT16(1500, servo[3]);
+}
+
+void test_elevon_yaw_maps_to_servo3() {
+    wp::Mixer m; m.setAirframe(wp::Airframe::Elevon);
+    float src[static_cast<int>(wp::MixSource::Count)]; zero_src(src);
+    src[(int)wp::MixSource::Yaw] = 0.4f;
+    uint16_t servo[wp::kNumServos];
+    m.mix(src, servo);
+    // servo3 = Yaw(+1)*0.4 -> 1700；两片升降副翼(0,1)不受 yaw 影响
+    TEST_ASSERT_EQUAL_UINT16(1700, servo[3]);
+    TEST_ASSERT_EQUAL_UINT16(1500, servo[0]);
+    TEST_ASSERT_EQUAL_UINT16(1500, servo[1]);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_standard_centered_outputs_1500);
@@ -111,5 +161,9 @@ int main() {
     RUN_TEST(test_elevon_roll_opposite_pitch_same);
     RUN_TEST(test_flaperon_flap_both_ailerons_same);
     RUN_TEST(test_flaperon_roll_ailerons_differential);
+    RUN_TEST(test_flaperon_combined_roll_and_flap);
+    RUN_TEST(test_new_presets_throttle_channel_is_throttle);
+    RUN_TEST(test_vtail_roll_maps_to_aileron);
+    RUN_TEST(test_elevon_yaw_maps_to_servo3);
     return UNITY_END();
 }
