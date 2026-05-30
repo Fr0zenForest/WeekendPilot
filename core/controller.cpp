@@ -23,7 +23,7 @@ ServoCommand Controller::update(const ControlInput& in) {
         return out;
     }
 
-    ahrs_.update(in.imu, in.dt);
+    ahrs_.update(in.imu, in.mag, in.dt);
 
     float roll_cmd  = channelToNorm(in.channels[cfg_.roll_channel]);
     float pitch_cmd = channelToNorm(in.channels[cfg_.pitch_channel]);
