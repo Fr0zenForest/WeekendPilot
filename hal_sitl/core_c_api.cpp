@@ -15,16 +15,20 @@ void wp_controller_update(void* h,
                           float dt_s, int link_ok,
                           unsigned short* servos_out) {
     auto* c = static_cast<wp::Controller*>(h);
-    wp::ControlInput in{};
-    for (int i = 0; i < wp::kNumChannels; ++i) in.channels[i] = channels[i];
-    in.imu.gyro_x = imu6[0]; in.imu.gyro_y = imu6[1]; in.imu.gyro_z = imu6[2];
-    in.imu.accel_x = imu6[3]; in.imu.accel_y = imu6[4]; in.imu.accel_z = imu6[5];
-    in.imu.valid = true;
-    in.mag.mag_x = mag3[0]; in.mag.mag_y = mag3[1]; in.mag.mag_z = mag3[2];
-    in.mag.valid = (mag_valid != 0);
-    in.baro.altitude_m = baro_alt_m; in.baro.valid = (baro_valid != 0);
-    in.dt = dt_s; in.link_ok = (link_ok != 0);
-    wp::ServoCommand out = c->update(in);
+
+    uint16_t ch[wp::kNumChannels];
+    for (int i = 0; i < wp::kNumChannels; ++i)
+        ch[i] = static_cast<uint16_t>(channels[i]);
+
+    wp::SensorBundle bundle{};
+    bundle.imu.gyro_x = imu6[0]; bundle.imu.gyro_y = imu6[1]; bundle.imu.gyro_z = imu6[2];
+    bundle.imu.accel_x = imu6[3]; bundle.imu.accel_y = imu6[4]; bundle.imu.accel_z = imu6[5];
+    bundle.imu.valid = true;
+    bundle.mag.mag_x = mag3[0]; bundle.mag.mag_y = mag3[1]; bundle.mag.mag_z = mag3[2];
+    bundle.mag.valid = (mag_valid != 0);
+    bundle.baro.altitude_m = baro_alt_m; bundle.baro.valid = (baro_valid != 0);
+
+    wp::ServoCommand out = c->updateFromBundle(ch, bundle, dt_s, (link_ok != 0));
     std::memcpy(servos_out, out.servo, sizeof(out.servo));
 }
 
