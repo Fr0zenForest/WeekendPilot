@@ -3,7 +3,7 @@
 
 namespace wp {
 
-// Mahony 6DOF 互补滤波。输入陀螺 deg/s、加速度 g，输出欧拉角 deg。
+// Mahony 6/9DOF 互补滤波。输入陀螺 deg/s、加速度 g，输出欧拉角 deg。
 // 移植自 madflight (MIT) / PaulStoffregen MahonyAHRS。
 class AhrsMahony {
 public:
@@ -11,8 +11,10 @@ public:
     void setKi(float two_ki) { two_ki_ = two_ki; }
     void reset();
 
-    // gyro deg/s, accel g, dt seconds
+    // 6DOF：仅陀螺+加速度（无磁力计）。保持向后兼容。
     void update(const ImuSample& imu, float dt);
+    // 9/6DOF 自动派发：mag.valid 且非零 -> 9DOF，否则退回 6DOF。
+    void update(const ImuSample& imu, const MagSample& mag, float dt);
     Attitude attitude() const { return att_; }
 
 private:
@@ -21,6 +23,10 @@ private:
     float two_kp_ = 2.0f * 0.5f;
     float two_ki_ = 2.0f * 0.0f;
     Attitude att_;
+    void update6DOF(float gx, float gy, float gz, float ax, float ay, float az, float dt);
+    void update9DOF(float gx, float gy, float gz, float ax, float ay, float az,
+                    float mx, float my, float mz, float dt);
+    void integrateQuaternion(float gx, float gy, float gz, float dt);
     void quaternionToEuler();
 };
 
