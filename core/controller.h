@@ -5,7 +5,7 @@
 #include "modes/stab_mode.h"
 #include "mixer/mixer.h"
 #include "safety/glimit.h"
-#include "sensors/sensor_frontend.h"
+#include "sensors/sensor_bundle.h"
 
 namespace wp {
 
@@ -42,7 +42,7 @@ public:
     ServoCommand update(const ControlInput& in);
     // 从 SensorFrontend 的 SensorBundle 喂控制器（拆进 ControlInput 后复用 update）。
     // 当前只搬运 update() 认识的 imu/mag/baro；gnss/airspeed 待阶段 3 用上时再接。
-    ServoCommand updateFromBundle(const uint16_t channels[kNumChannels],
+    ServoCommand updateFromBundle(const uint16_t (&channels)[kNumChannels],
                                   const SensorBundle& bundle,
                                   float dt, bool link_ok);
     Attitude attitude() const { return ahrs_.attitude(); }

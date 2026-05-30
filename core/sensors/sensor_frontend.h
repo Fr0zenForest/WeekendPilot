@@ -1,16 +1,8 @@
 #pragma once
+#include "sensors/sensor_bundle.h"
 #include "sensors/sensor_interfaces.h"
 
 namespace wp {
-
-// 喂给 core 的单组干净样本（core 永远只看到这一组，不知背后几个传感器）。
-struct SensorBundle {
-    ImuSample      imu;
-    MagSample      mag;
-    BaroSample     baro;
-    GnssSample     gnss;
-    AirspeedSample airspeed;
-};
 
 // 聚合层：持有各类型接口指针，begin() 探测+初始化并推断档位，poll() 读一轮填 bundle。
 // 本次为单实例直通；max 档多实例表决留待后续（接口已为此预留）。

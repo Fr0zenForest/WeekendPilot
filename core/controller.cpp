@@ -67,7 +67,7 @@ ServoCommand Controller::update(const ControlInput& in) {
     return out;
 }
 
-ServoCommand Controller::updateFromBundle(const uint16_t channels[kNumChannels],
+ServoCommand Controller::updateFromBundle(const uint16_t (&channels)[kNumChannels],
                                           const SensorBundle& bundle,
                                           float dt, bool link_ok) {
     ControlInput in{};

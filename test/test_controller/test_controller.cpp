@@ -116,7 +116,29 @@ void test_update_from_bundle_matches_control_input() {
 
     uint16_t ch[wp::kNumChannels];
     for (int i = 0; i < wp::kNumChannels; ++i) ch[i] = 1500;
-    ch[4] = 1500;  // Angle 模式
+    float dt = 0.002f;
+
+    wp::ServoCommand viaBundle = a.updateFromBundle(ch, bundle, dt, true);
+
+    wp::ControlInput in{};
+    for (int i = 0; i < wp::kNumChannels; ++i) in.channels[i] = ch[i];
+    in.imu = bundle.imu; in.mag = bundle.mag; in.baro = bundle.baro;
+    in.dt = dt; in.link_ok = true;
+    wp::ServoCommand viaInput = b.update(in);
+
+    for (int i = 0; i < wp::kNumServos; ++i)
+        TEST_ASSERT_EQUAL_UINT16(viaInput.servo[i], viaBundle.servo[i]);
+}
+
+void test_update_from_bundle_matches_on_invalid_imu() {
+    // imu 失效时 update 走直通；两路仍应逐字节相等
+    wp::Controller a, b;
+    wp::SensorBundle bundle{};
+    bundle.imu.valid = false;   // 失效
+
+    uint16_t ch[wp::kNumChannels];
+    for (int i = 0; i < wp::kNumChannels; ++i) ch[i] = 1500;
+    ch[0] = 1600; ch[1] = 1400;   // 给几个非中位值，确保直通可区分
     float dt = 0.002f;
 
     wp::ServoCommand viaBundle = a.updateFromBundle(ch, bundle, dt, true);
@@ -142,5 +164,6 @@ int main() {
     RUN_TEST(test_flaperon_airframe_routes_flap_to_both_ailerons);
     RUN_TEST(test_flap_disabled_keeps_flap_demand_zero);
     RUN_TEST(test_update_from_bundle_matches_control_input);
+    RUN_TEST(test_update_from_bundle_matches_on_invalid_imu);
     return UNITY_END();
 }
