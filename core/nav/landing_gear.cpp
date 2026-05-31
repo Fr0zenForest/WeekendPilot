@@ -50,8 +50,10 @@ LandingGearOutput LandingGear::update(const LandingGearInputs& in) {
         case GearState::Deploying:
         case GearState::Retracting: {
             travel_timer_ms_ += dt_ms;
-            if (overcurrent) stall_timer_ms_ += dt_ms;
-            else             stall_timer_ms_ = 0.0f;   // 抖动复位去抖计时
+            // 启动浪涌屏蔽：行程头 inrush_mask_ms 内的电流超阈不计入堵转去抖。
+            const bool past_inrush = travel_timer_ms_ > cfg_.inrush_mask_ms;
+            if (overcurrent && past_inrush) stall_timer_ms_ += dt_ms;
+            else                            stall_timer_ms_ = 0.0f;
 
             if (stall_timer_ms_ >= cfg_.stall_debounce_ms) {
                 state_ = (state_ == GearState::Deploying) ? GearState::Deployed

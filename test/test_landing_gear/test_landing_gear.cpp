@@ -48,9 +48,9 @@ void test_stall_debounce_reaches_deployed() {
     in.deploy_cmd = false; g.update(in);
     in.deploy_cmd = true;  g.update(in);     // Deploying
     in.current_a = 3.0f;                      // 超阈 2.0
-    // 80ms 去抖 @20ms/拍 = 需 >=4 拍持续超阈
+    // 250ms inrush mask + 80ms 去抖 @20ms/拍 = 需 >=17 拍；20 拍足够
     LandingGearOutput o;
-    for (int i = 0; i < 5; ++i) o = g.update(in);
+    for (int i = 0; i < 20; ++i) o = g.update(in);
     TEST_ASSERT_EQUAL(GearState::Deployed, o.state);
     TEST_ASSERT_EQUAL(GearDrive::Stop, o.drive);
 }
@@ -75,7 +75,7 @@ void test_alert_flag_counts_as_overcurrent() {
     in.deploy_cmd = true;  g.update(in);
     in.current_a = 0.0f; in.alert = true;     // 电流读数低但 ALERT 触发
     LandingGearOutput o;
-    for (int i = 0; i < 5; ++i) o = g.update(in);
+    for (int i = 0; i < 20; ++i) o = g.update(in);
     TEST_ASSERT_EQUAL(GearState::Deployed, o.state);
 }
 
@@ -85,12 +85,12 @@ void test_retract_cycle() {
     LandingGearInputs in; in.dt = 0.02f;
     in.deploy_cmd = false; g.update(in);
     in.deploy_cmd = true;  g.update(in);
-    in.current_a = 3.0f; for (int i=0;i<5;++i) g.update(in);   // -> Deployed
+    in.current_a = 3.0f; for (int i=0;i<20;++i) g.update(in);   // -> Deployed
     in.current_a = 0.0f; in.deploy_cmd = false;                 // 跳变"收"
     LandingGearOutput o = g.update(in);
     TEST_ASSERT_EQUAL(GearState::Retracting, o.state);
     TEST_ASSERT_EQUAL(GearDrive::Retract, o.drive);
-    in.current_a = 3.0f; for (int i=0;i<5;++i) o = g.update(in);   // 堵转
+    in.current_a = 3.0f; for (int i=0;i<20;++i) o = g.update(in);   // 堵转
     TEST_ASSERT_EQUAL(GearState::Retracted, o.state);
     TEST_ASSERT_EQUAL(GearDrive::Stop, o.drive);
 }
@@ -116,6 +116,19 @@ void test_init_state_no_drive() {
     LandingGearOutput o = g.update(in);
     TEST_ASSERT_EQUAL(GearState::Deployed, o.state);
     TEST_ASSERT_EQUAL(GearDrive::Stop, o.drive);   // 不动
+}
+
+// 启动浪涌屏蔽：行程头 inrush_mask_ms 内的超阈电流不应latch到位
+void test_inrush_mask_ignores_startup_current() {
+    LandingGear g; LandingGearConfig c = cfg(); c.inrush_mask_ms = 250; g.setConfig(c);
+    LandingGearInputs in; in.dt = 0.02f;
+    in.deploy_cmd = false; g.update(in);
+    in.deploy_cmd = true;  g.update(in);     // Deploying，travel_timer 从 0 起
+    in.current_a = 3.0f;                      // 立刻超阈（模拟启动浪涌）
+    LandingGearOutput o;
+    // 头 250ms（含去抖80ms）内即便持续超阈也不该latch到位；跑 10 拍=200ms < 250ms
+    for (int i = 0; i < 10; ++i) o = g.update(in);
+    TEST_ASSERT_EQUAL(GearState::Deploying, o.state);   // 仍在动，未误判
 }
 
 // 链路丢失不在行程中反转：Deploying 中途丢链 -> 仍 Deploying（不退到 Retracting）
@@ -157,6 +170,7 @@ int main() {
     RUN_TEST(test_retract_cycle);
     RUN_TEST(test_timeout_enters_fault);
     RUN_TEST(test_init_state_no_drive);
+    RUN_TEST(test_inrush_mask_ignores_startup_current);
     RUN_TEST(test_link_loss_does_not_reverse_mid_travel);
     RUN_TEST(test_link_loss_does_not_restart_fault);
     return UNITY_END();

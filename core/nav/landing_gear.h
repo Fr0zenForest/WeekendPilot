@@ -22,6 +22,7 @@ struct LandingGearConfig {
     bool     enabled = false;          // 总开关（默认关，全写好先不使能）
     float    stall_current_a = 2.0f;   // 堵转判定电流阈值（A）
     uint16_t stall_debounce_ms = 80;   // 电流超阈持续多久判定到位（去抖）
+    uint16_t inrush_mask_ms = 250;     // 行程启动屏蔽窗：起始这段时间内电流超阈不计堵转（防启动浪涌误判）
     uint16_t timeout_ms = 4000;        // 行程超时无堵转 -> Fault（防烧）
 };
 
