@@ -124,6 +124,9 @@ def write_servos(fdm, servos8):
     def unit(us):
         return max(0.0, min(1.0, (us - 1000) / 1000.0))
     fdm.set_property_value('fcs/aileron-cmd-norm',  norm(servos8[0]))
-    fdm.set_property_value('fcs/elevator-cmd-norm', norm(servos8[1]))
+    # 升降舵反向：JSBSim 约定 elevator-cmd-norm>0 = 升降舵后缘下偏 = 低头；
+    # 而本控制器约定 pitch 需求>0(servo>1500)= 抬头指令。两者符号相反，必须反接，
+    # 否则俯仰内环正反馈发散（这是 SITL 里等价于真机的“舵机反向/舵面行程方向”设置）。
+    fdm.set_property_value('fcs/elevator-cmd-norm', -norm(servos8[1]))
     fdm.set_property_value('fcs/throttle-cmd-norm[0]', unit(servos8[2]))
     fdm.set_property_value('fcs/rudder-cmd-norm',   norm(servos8[3]))

@@ -32,6 +32,12 @@ def make_fdm(dt):
     fdm.set_property_value('ic/h-agl-ft', 1000)
     fdm.set_property_value('ic/vc-kts', 90)
     fdm.set_property_value('ic/gamma-deg', 0)
+    # 启动发动机：c172p 是活塞机，不设混合比/磁电机/running 则发动机熄火，
+    # 整机只能当滑翔机滑行——之前 roll/turn 没暴露，但定高闭环靠油门维持能量，必须真有推力。
+    fdm.set_property_value('propulsion/magneto_cmd', 3)
+    fdm.set_property_value('fcs/mixture-cmd-norm[0]', 1.0)
+    fdm.set_property_value('fcs/throttle-cmd-norm[0]', 0.6)
+    fdm.set_property_value('propulsion/set-running', -1)   # -1 = 所有发动机点火运转
     fdm.run_ic()
     return fdm
 
@@ -45,6 +51,9 @@ def rc_for_time(t, scenario):
     ch[5] = 2000       # gain 100%
     if scenario == 'turn' and 2.0 <= t < 9.0:
         ch[0] = 1750   # sustained right-roll stick -> commands a banked turn
+    if scenario == 'althold':
+        ch[4] = 1500       # Angle 模式
+        ch[7] = 2000       # ch8 定高开关拨上
     return ch
 
 
@@ -53,7 +62,7 @@ def main():
     ap.add_argument('--dt', type=float, default=0.01)
     ap.add_argument('--secs', type=float, default=10.0)
     ap.add_argument('--out', default='sitl_log.csv')
-    ap.add_argument('--scenario', default='recover', choices=['recover', 'turn'])
+    ap.add_argument('--scenario', default='recover', choices=['recover', 'turn', 'althold'])
     args = ap.parse_args()
 
     dll = resolve_dll()
@@ -76,6 +85,11 @@ def main():
             write_servos(fdm, servos)
             if args.scenario == 'recover' and 3.0 <= t < 3.4:
                 fdm.set_property_value('fcs/aileron-cmd-norm', 0.8)  # roll kick
+            if args.scenario == 'althold' and 3.0 <= t < 3.6:
+                # 注入扰动脉冲。注意 write_servos 已对升降舵反接，但这里是直接写
+                # JSBSim 的 elevator-cmd-norm，按 JSBSim 约定 -0.5 = 机头上抬，
+                # 所以飞机先冲高再由定高拉回（见 check_alt_hold.py 的峰值偏离判据）。
+                fdm.set_property_value('fcs/elevator-cmd-norm', -0.5)
             fdm.run()
             t = fdm.get_sim_time()
             w.writerow([round(t,3),

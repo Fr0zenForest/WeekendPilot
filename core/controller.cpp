@@ -11,6 +11,7 @@ void Controller::setConfig(const ControllerConfig& cfg) {
     cfg_ = cfg;
     modes_.setConfig(cfg_.stab);
     mixer_.setAirframe(cfg_.airframe);
+    althold_.setConfig(cfg_.althold);
 }
 
 ServoCommand Controller::update(const ControlInput& in) {
@@ -36,6 +37,18 @@ ServoCommand Controller::update(const ControlInput& in) {
     float gain      = gainFromChannel(in.channels[cfg_.gain_channel]);
     bool throttle_low = in.channels[cfg_.throttle_channel] < cfg_.throttle_low_us;
 
+    // 定高接管：仅 Angle 模式 + 总开关 + 通道拨上 + 气压有效时驱动俯仰。
+    // cfg_.enabled 此处必为 true（上方 Off/失效早返回已拦截）。
+    bool althold_req = cfg_.althold_enabled
+                       && mode == FlightMode::Angle
+                       && in.channels[cfg_.althold_channel] > kModeRateThresh;
+    float ah_pitch = 0.0f;
+    bool althold_active = althold_.update(althold_req, in.baro.valid, in.baro.altitude_m,
+                                          pitch_cmd, in.dt, ah_pitch);
+    if (althold_active) {
+        pitch_cmd = ah_pitch;   // 用定高俯仰指令替换飞手俯仰杆，喂给 Angle 内环
+    }
+
     StabCorrection corr = modes_.update(mode, roll_cmd, pitch_cmd, yaw_cmd,
                                         ahrs_.attitude(), in.imu, in.dt, throttle_low);
 
@@ -45,8 +58,14 @@ ServoCommand Controller::update(const ControlInput& in) {
     demand[static_cast<int>(MixSource::Pitch)] = pitch_cmd + gain * corr.pitch;
     demand[static_cast<int>(MixSource::Yaw)]   = yaw_cmd   + gain * corr.yaw;
     // 油门：归一化 [0,1]（throttle 通道 us -> 0..1）
-    demand[static_cast<int>(MixSource::Throttle)] =
-        gainFromChannel(in.channels[cfg_.throttle_channel]);
+    float throttle_demand = gainFromChannel(in.channels[cfg_.throttle_channel]);
+    // 定高油门能量耦合：叠加俯仰->油门前馈增量，再夹回 [0,1]。
+    if (althold_active) {
+        throttle_demand += althold_.throttleDelta();
+        if (throttle_demand > 1.0f) throttle_demand = 1.0f;
+        if (throttle_demand < 0.0f) throttle_demand = 0.0f;
+    }
+    demand[static_cast<int>(MixSource::Throttle)] = throttle_demand;
     // 襟翼需求（可选）
     demand[static_cast<int>(MixSource::Flap)] = cfg_.flap_enabled
         ? gainFromChannel(in.channels[cfg_.flap_channel]) : 0.0f;
