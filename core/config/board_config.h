@@ -49,8 +49,6 @@ constexpr int kPinStatusLed = 48;
 
 // PCA9685 PWM 扩展（挂主 I2C 总线）。默认地址 0x40；A0~A5 跳线可改。
 constexpr int kAddrPwmExpander = 0x40;
-// PCA9685 提供的输出路数（单颗）。CompositeServoOutput 据此分配全局索引区间。
-constexpr int kPwmExpanderChannels = 16;
 
 // INA3221 三路电流监测（挂主 I2C 总线）。默认地址 0x40 会撞 PCA9685，故用 0x41。
 // （INA3221 地址 0x40~0x43 由 A0 脚接 GND/VS/SDA/SCL 选）
