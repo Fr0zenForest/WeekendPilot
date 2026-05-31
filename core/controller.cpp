@@ -33,6 +33,7 @@ ServoCommand Controller::update(const ControlInput& in) {
     for (int i = 0; i < kNumServos; ++i) out.servo[i] = in.channels[i];
 
     FlightMode mode = modeFromChannel(in.channels[cfg_.mode_channel]);
+    last_mode_ = mode;   // 缓存通道判定的模式（含 Off/失效拍），供 activeMode() 调试查询
 
     // 直通条件：未启用 / 链路丢失 / IMU 无效 / Off 模式
     if (!cfg_.enabled || !in.link_ok || !in.imu.valid || mode == FlightMode::Off) {
