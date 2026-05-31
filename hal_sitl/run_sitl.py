@@ -32,6 +32,12 @@ def make_fdm(dt):
     fdm.set_property_value('ic/h-agl-ft', 1000)
     fdm.set_property_value('ic/vc-kts', 90)
     fdm.set_property_value('ic/gamma-deg', 0)
+    # 启动发动机：c172p 是活塞机，不设混合比/磁电机/running 则发动机熄火，
+    # 整机只能当滑翔机滑行——之前 roll/turn 没暴露，但定高闭环靠油门维持能量，必须真有推力。
+    fdm.set_property_value('propulsion/magneto_cmd', 3)
+    fdm.set_property_value('fcs/mixture-cmd-norm[0]', 1.0)
+    fdm.set_property_value('fcs/throttle-cmd-norm[0]', 0.6)
+    fdm.set_property_value('propulsion/set-running', -1)   # -1 = 所有发动机点火运转
     fdm.run_ic()
     return fdm
 
