@@ -29,6 +29,9 @@
   #ifndef WP_HAS_AIRSPEED
     #define WP_HAS_AIRSPEED 1
   #endif
+  #ifndef WP_HAS_BLACKBOX
+    #define WP_HAS_BLACKBOX 1
+  #endif
 #endif
 
 // 兜底：任何未被上面或 build_flags 定义的，默认 0（关闭）
@@ -47,6 +50,9 @@
 #ifndef WP_HAS_AIRSPEED
   #define WP_HAS_AIRSPEED 0
 #endif
+#ifndef WP_HAS_BLACKBOX
+  #define WP_HAS_BLACKBOX 0
+#endif
 
 namespace wp {
 // constexpr 镜像：让 core 用 `if constexpr (kHasGps)` 做分支，比裸宏更安全可读。
@@ -55,4 +61,5 @@ constexpr bool kHasBaro     = WP_HAS_BARO;
 constexpr bool kHasMag      = WP_HAS_MAG;
 constexpr bool kHasGps      = WP_HAS_GPS;
 constexpr bool kHasAirspeed = WP_HAS_AIRSPEED;
+constexpr bool kHasBlackbox = WP_HAS_BLACKBOX;
 }  // namespace wp
