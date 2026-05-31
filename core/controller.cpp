@@ -38,9 +38,10 @@ ServoCommand Controller::update(const ControlInput& in) {
     bool throttle_low = in.channels[cfg_.throttle_channel] < cfg_.throttle_low_us;
 
     // 定高接管：仅 Angle 模式 + 总开关 + 通道拨上 + 气压有效时驱动俯仰。
+    // cfg_.enabled 此处必为 true（上方 Off/失效早返回已拦截）。
     bool althold_req = cfg_.althold_enabled
                        && mode == FlightMode::Angle
-                       && in.channels[cfg_.althold_channel] > 1700;
+                       && in.channels[cfg_.althold_channel] > kModeRateThresh;
     float ah_pitch = 0.0f;
     if (althold_.update(althold_req, in.baro.valid, in.baro.altitude_m,
                         pitch_cmd, in.dt, ah_pitch)) {
