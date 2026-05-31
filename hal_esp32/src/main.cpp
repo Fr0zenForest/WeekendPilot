@@ -1,6 +1,31 @@
 #include <Arduino.h>
 #include "types.h"
 #include "controller.h"
+#include "sensors/sensor_frontend.h"
+#include "sensors/sensor_bundle.h"
+#include "config/board_config.h"
+#include "config/capabilities.h"
+#include <Wire.h>
+#if WP_HAS_IMU
+#include "drivers/icm42688.h"
+#endif
+#if WP_HAS_BARO
+#include "drivers/bmp390.h"
+#endif
+#if WP_HAS_MAG
+#include "drivers/ist8310.h"
+#endif
+
+static wp::SensorFrontend g_frontend;
+#if WP_HAS_IMU
+static wp::Icm42688 g_imu(Wire, wp::kAddrImu);
+#endif
+#if WP_HAS_BARO
+static wp::Bmp390 g_baro(Wire, wp::kAddrBaro);
+#endif
+#if WP_HAS_MAG
+static wp::Ist8310 g_mag(Wire, wp::kAddrMag);
+#endif
 
 static const int kServoPins[wp::kNumServos] = {1, 2, 8, 9, 10, 15, 16, 17};
 static const int kCrsfRxPin = 44;
@@ -49,6 +74,21 @@ void setup() {
     Serial.begin(115200);
     Serial1.begin(420000, SERIAL_8N1, kCrsfRxPin, kCrsfTxPin);
     for (int i = 0; i < wp::kNumChannels; ++i) g_channels[i] = 1500;
+    Wire.begin(wp::kPinI2cSda, wp::kPinI2cScl);
+    Wire.setClock(400000);
+#if WP_HAS_IMU
+    g_frontend.setGyroAccel(&g_imu);
+#endif
+#if WP_HAS_BARO
+    g_frontend.setBarometer(&g_baro);
+#endif
+#if WP_HAS_MAG
+    g_frontend.setMagnetometer(&g_mag);
+#endif
+    g_frontend.begin();   // probe+init registered drivers; missing ones auto-degrade
+    Serial.printf("[wp] sensor tier=%d imu=%d baro=%d mag=%d\n",
+                  (int)g_frontend.tier(), g_frontend.has_imu,
+                  g_frontend.has_baro, g_frontend.has_mag);
     setupPwm();
 }
 
@@ -75,14 +115,14 @@ void loop() {
 
     bool link_ok = (millis() - g_lastRcMs) < 500;
 
-    wp::ControlInput in{};
+    uint16_t ch[wp::kNumChannels];
     for (int i = 0; i < wp::kNumChannels; ++i)
-        in.channels[i] = link_ok ? g_channels[i] : 1500;
-    in.dt = 0.001f;
-    in.link_ok = link_ok;
-    in.imu.valid = false;
+        ch[i] = link_ok ? g_channels[i] : 1500;
 
-    wp::ServoCommand out = g_controller.update(in);
+    wp::SensorBundle bundle{};
+    g_frontend.poll(bundle);   // missing/failed samples have valid=false
+
+    wp::ServoCommand out = g_controller.updateFromBundle(ch, bundle, 0.001f, link_ok);
     for (int i = 0; i < wp::kNumServos; ++i) writeServoUs(i, out.servo[i]);
     delay(2);
 }
