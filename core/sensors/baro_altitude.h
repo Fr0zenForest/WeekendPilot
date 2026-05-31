@@ -5,8 +5,10 @@ namespace wp {
 // 国际标准大气海平面气压 (Pa)。
 constexpr float kSeaLevelPa = 101325.0f;
 
+// ⚠️ 新代码（非移植）。ISA 公式数学可测，但绝对高度受当日天气影响；实物起飞前
+//    必须用 setReference() 锁当前气压为零基准，否则只有相对高度有意义。未经实物实测。
 // 气压(Pa) → 相对参考点的高度(m)。ISA 对流层公式：
-//   h = 44330 * (1 - (p / p_ref)^0.1903)
+//   h = 44330 * (1 - (p / p_ref)^0.1902949)
 // p_ref 为零点基准气压；传 kSeaLevelPa 得相对标准海平面的绝对高度（受天气误差）。
 // p<=0 或 p_ref<=0 返回 0。
 float baroPressureToAltitude(float pressure_pa, float p_ref_pa);

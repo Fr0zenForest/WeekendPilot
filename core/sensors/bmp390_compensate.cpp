@@ -2,6 +2,7 @@
 
 namespace wp {
 
+// ⚠️ 移植自 ElrsRX baro_bmp390.cpp（datasheet §8.4/§8.6），未在本硬件实测。
 Bmp390Calib bmp390ParseCalib(const uint8_t buf[21]) {
     auto u16 = [&](int o) -> uint16_t {
         return (uint16_t)buf[o] | ((uint16_t)buf[o + 1] << 8);

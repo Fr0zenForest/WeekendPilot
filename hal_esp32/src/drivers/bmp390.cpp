@@ -31,7 +31,8 @@ bool Bmp390::init() {
     uint8_t nvm[bmp390::kLenNvm];
     if (!readRegs(bmp390::kRegNvmPar, nvm, bmp390::kLenNvm)) return false;
     calib_ = bmp390ParseCalib(nvm);
-    // 无人机预设（ElrsRX/datasheet §3.4.5）：OSR t×1 p×8，ODR 50Hz，IIR coeff3
+    // ⚠️ 无人机预设移植自 ElrsRX/datasheet §3.4.5，未在本硬件实测：
+    //    OSR t×1 p×8，ODR 50Hz，IIR coeff3
     if (!writeReg(bmp390::kRegOsr, (0x0 << 3) | 0x3)) return false;  // x1 / x8
     if (!writeReg(bmp390::kRegOdr, 0x02)) return false;             // 50 Hz
     if (!writeReg(bmp390::kRegConfig, (0x2 << 1))) return false;    // IIR coeff 3

@@ -42,8 +42,10 @@ bool Icm42688::init() {
 bool Icm42688::read(ImuSample& out) {
     uint8_t raw[14];
     if (!readRegs(icm42688::kRegTempData1, raw, 14)) return false;  // 失败前不碰 out
-    out = icm42688Decode(raw);   // ⚠️ 轴向极性须装机后核对
-    return out.valid;
+    ImuSample s = icm42688Decode(raw);   // ⚠️ 轴向极性须装机后核对
+    if (!s.valid) return false;          // 契约：无效不污染 out
+    out = s;
+    return true;
 }
 
 }  // namespace wp

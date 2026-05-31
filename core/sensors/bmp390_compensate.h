@@ -22,6 +22,8 @@ namespace bmp390 {
     constexpr int     kLenData    = 6;
 }
 
+// ⚠️ NVM trim 解析 + 温压补偿全部移植自 ElrsRX baro_bmp390.cpp（datasheet §8.4/§8.6
+//    float 版），未在本硬件实测；给定 trim+raw 的补偿数学可测，真实气压噪声/温漂待实物。
 // datasheet §8.4 float trim（从 21 字节 NVM 解出）。
 struct Bmp390Calib {
     float par_t1, par_t2, par_t3;
