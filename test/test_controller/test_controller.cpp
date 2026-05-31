@@ -237,14 +237,17 @@ void test_blackbox_records_on_update() {
     TEST_ASSERT_FLOAT_WITHIN(1e-2, 50.0f, g.baro_alt_m);
 }
 
-// 黑匣子默认关 -> 不注入 sink 也不记录，行为不变。
+// 黑匣子默认关 -> 不记录。显式置 link_ok/imu/baro 有效并给 Angle 模式，
+// 确保越过早返回、真正抵达 if(cfg_.blackbox.enabled) 守卫并正确跳过（而非因早返回侥幸为 0）。
 void test_blackbox_disabled_by_default() {
     static uint8_t bb_buf[256];
     wp::RingBufferSink sink(bb_buf, sizeof(bb_buf));
     wp::Controller c;                // 默认 cfg：blackbox.enabled=false
     c.attachBlackboxSink(&sink);
     wp::ControlInput in{}; fill_centered(in);
-    in.channels[4] = 1500;
+    in.channels[4] = 1500;           // Angle（越过 Off 早返回）
+    in.link_ok = true; in.imu.valid = true;
+    in.baro.valid = true; in.baro.altitude_m = 50.0f;
     c.update(in);
     TEST_ASSERT_EQUAL_INT(0, (int)sink.usedBytes());
 }

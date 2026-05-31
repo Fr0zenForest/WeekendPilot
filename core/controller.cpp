@@ -21,6 +21,8 @@ void Controller::attachBlackboxSink(IBlackboxSink* sink) {
 }
 
 ServoCommand Controller::update(const ControlInput& in) {
+    // 黑匣子时间戳：上电起的墙钟毫秒（含 Off/失控等不记录的拍），+0.5f 四舍五入到 ms。
+    // 故意累加在早返回之前——日志里能看出在控/脱控的时间间隙，而非仅在控时长。
     frame_t_ms_ += static_cast<uint32_t>(in.dt * 1000.0f + 0.5f);
     ServoCommand out{};
     // TODO(phase3): 失效回退按 servo[i]=channels[i] 直通，仅 Standard 布局正确；
