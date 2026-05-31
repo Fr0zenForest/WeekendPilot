@@ -252,6 +252,32 @@ void test_blackbox_disabled_by_default() {
     TEST_ASSERT_EQUAL_INT(0, (int)sink.usedBytes());
 }
 
+// 预置 roll_trim 非零 -> 居中杆 Angle 模式下 aileron(servo0) 偏离中位（trim 叠加生效）。
+void test_roll_trim_offsets_aileron() {
+    wp::ControllerConfig cfg;
+    cfg.roll_trim = 0.2f;            // 预置配平
+    cfg.gain_channel = 5;
+    wp::Controller c; c.setConfig(cfg);
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;          // Angle
+    in.channels[5] = 0;             // gain 0 -> 隔离 PID，纯看 trim 叠加
+    wp::ServoCommand out = c.update(in);
+    // trim 0.2 -> aileron 应高于中位 1500
+    TEST_ASSERT_TRUE(out.servo[0] > 1500);
+}
+
+// 自动配平默认关 -> 多拍 update 后 trim 不被学习改写。
+void test_autotrim_disabled_keeps_trim_constant() {
+    wp::ControllerConfig cfg;
+    cfg.auto_trim_enabled = false;
+    cfg.roll_trim = 0.0f;
+    wp::Controller c; c.setConfig(cfg);
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;          // Angle
+    for (int i = 0; i < 50; ++i) c.update(in);
+    TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0f, c.rollTrim());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_off_mode_is_passthrough);
@@ -268,5 +294,7 @@ int main() {
     RUN_TEST(test_althold_inactive_when_channel_low);
     RUN_TEST(test_blackbox_records_on_update);
     RUN_TEST(test_blackbox_disabled_by_default);
+    RUN_TEST(test_roll_trim_offsets_aileron);
+    RUN_TEST(test_autotrim_disabled_keeps_trim_constant);
     return UNITY_END();
 }

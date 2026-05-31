@@ -7,6 +7,7 @@
 #include "safety/glimit.h"
 #include "sensors/sensor_bundle.h"
 #include "nav/altitude_hold.h"
+#include "nav/auto_trim.h"
 #include "blackbox/blackbox.h"
 
 namespace wp {
@@ -38,6 +39,10 @@ struct ControllerConfig {
     bool    althold_enabled = false;   // 总开关（默认关，全写好先不使能）
     uint8_t althold_channel = 7;       // ch8：拨上启用定高
     AltHoldConfig althold;
+    bool  auto_trim_enabled = false;  // 总开关（默认关，全写好先不使能）
+    float roll_trim  = 0.0f;          // 持久配平（归一化舵量），随 NVS 存
+    float pitch_trim = 0.0f;
+    AutoTrimConfig auto_trim;
     BlackboxConfig blackbox;
 };
 
@@ -53,6 +58,8 @@ public:
                                   float dt, bool link_ok);
     Attitude attitude() const { return ahrs_.attitude(); }
     void attachBlackboxSink(IBlackboxSink* sink);
+    float rollTrim() const { return cfg_.roll_trim; }
+    float pitchTrim() const { return cfg_.pitch_trim; }
 
 private:
     ControllerConfig cfg_;
@@ -60,6 +67,7 @@ private:
     ModeController modes_;
     Mixer mixer_;
     AltitudeHold althold_;
+    AutoTrim auto_trim_;
     Blackbox blackbox_;
     IBlackboxSink* bb_sink_ = nullptr;
     uint32_t frame_t_ms_ = 0;
