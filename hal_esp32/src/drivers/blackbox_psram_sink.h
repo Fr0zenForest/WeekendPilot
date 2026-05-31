@@ -11,6 +11,11 @@ class PsramSink : public IBlackboxSink {
 public:
     explicit PsramSink(size_t cap_bytes);
     ~PsramSink() override;
+    // 拥有裸指针(buf_/ring_)，禁止拷贝/移动，防误拷贝导致双重释放/悬垂。
+    PsramSink(const PsramSink&) = delete;
+    PsramSink& operator=(const PsramSink&) = delete;
+    PsramSink(PsramSink&&) = delete;
+    PsramSink& operator=(PsramSink&&) = delete;
     bool ok() const { return ring_ != nullptr; }
 
     bool write(const uint8_t* data, size_t len) override;

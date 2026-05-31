@@ -105,6 +105,9 @@ ServoCommand Controller::update(const ControlInput& in) {
         for (int i = 0; i < kNumServos; ++i) fr.servo[i] = out.servo[i];
         fr.baro_alt_m = in.baro.altitude_m;
         fr.mode = static_cast<uint8_t>(mode);
+        // flags 位定义见 blackbox_frame.h。注意：本记录点在早返回之后，link_ok 与
+        // imu.valid 在此恒为真（bit0/bit1 恒置位）——保留是为了位布局稳定，且日后若把
+        // 记录点移到早返回之前可如实反映脱控；当前真正变化的是 bit2(baro)/bit3(althold)。
         fr.flags = uint8_t((in.link_ok ? 1 : 0) | (in.imu.valid ? 2 : 0) |
                            (in.baro.valid ? 4 : 0) | (althold_active ? 8 : 0));
         blackbox_.logFrame(fr);

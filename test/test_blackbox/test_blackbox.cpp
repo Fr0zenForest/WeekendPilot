@@ -30,6 +30,23 @@ void test_ring_overwrites_when_full() {
     TEST_ASSERT_EQUAL_INT(16, (int)sink.usedBytes());  // 满后封顶
 }
 
+// 环回后底层字节摆放正确：cap=8，先写 8 个 0x11(填满 head 回 0)，再写 3 个 0x22。
+// 3 个 0x22 应覆盖 buf[0..2]，buf[3..7] 仍为 0x11（验证 head 取模与覆盖位置无误）。
+void test_ring_wrap_byte_placement() {
+    uint8_t buf[8];
+    RingBufferSink sink(buf, sizeof(buf));
+    uint8_t a[8]; for (int i = 0; i < 8; ++i) a[i] = 0x11;
+    sink.write(a, 8);                      // head 0->...->0（环回），used=8
+    uint8_t b[3] = {0x22, 0x22, 0x22};
+    sink.write(b, 3);                      // 覆盖 buf[0..2]
+    TEST_ASSERT_EQUAL_UINT8(0x22, buf[0]);
+    TEST_ASSERT_EQUAL_UINT8(0x22, buf[1]);
+    TEST_ASSERT_EQUAL_UINT8(0x22, buf[2]);
+    TEST_ASSERT_EQUAL_UINT8(0x11, buf[3]);
+    TEST_ASSERT_EQUAL_UINT8(0x11, buf[7]);
+    TEST_ASSERT_EQUAL_INT(8, (int)sink.usedBytes());
+}
+
 // write 比单次容量还大的块应被拒绝（返回 false，不写）。
 void test_ring_rejects_oversize_single_write() {
     uint8_t buf[8];
@@ -90,6 +107,7 @@ int main() {
     UNITY_BEGIN();
     RUN_TEST(test_ring_accumulates);
     RUN_TEST(test_ring_overwrites_when_full);
+    RUN_TEST(test_ring_wrap_byte_placement);
     RUN_TEST(test_ring_rejects_oversize_single_write);
     RUN_TEST(test_disabled_records_nothing);
     RUN_TEST(test_decimation_writes_every_n);

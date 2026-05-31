@@ -14,7 +14,9 @@ uint32_t getU32(const uint8_t*& p) {
     uint32_t v = uint32_t(p[0]) | (uint32_t(p[1]) << 8) |
                  (uint32_t(p[2]) << 16) | (uint32_t(p[3]) << 24); p += 4; return v;
 }
-uint16_t getU16(const uint8_t*& p) { uint16_t v = uint16_t(p[0] | (p[1] << 8)); p += 2; return v; }
+uint16_t getU16(const uint8_t*& p) {
+    uint16_t v = uint16_t(uint16_t(p[0]) | (uint16_t(p[1]) << 8)); p += 2; return v;
+}
 float getF(const uint8_t*& p) { uint32_t u = getU32(p); float v; std::memcpy(&v, &u, 4); return v; }
 }  // namespace
 

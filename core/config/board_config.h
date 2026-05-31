@@ -13,6 +13,8 @@
     #define WP_HAS_BARO 1
   #endif
   // WP_HAS_MAG / WP_HAS_GPS / WP_HAS_AIRSPEED 默认不开，到货由 build_flags -D 打开
+  // WP_HAS_BLACKBOX 默认不开：PSRAM 环形缓冲未在实物验证；带 PSRAM 的板验证后
+  //   在此加 `#define WP_HAS_BLACKBOX 1` 或在 platformio.ini build_flags 加 -DWP_HAS_BLACKBOX=1。
 #endif
 
 namespace wp {

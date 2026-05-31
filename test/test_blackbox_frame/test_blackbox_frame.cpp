@@ -26,9 +26,13 @@ void test_frame_roundtrip() {
 
     TEST_ASSERT_EQUAL_UINT32(f.t_ms, g.t_ms);
     TEST_ASSERT_FLOAT_WITHIN(1e-3, f.gyro_x, g.gyro_x);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3, f.gyro_y, g.gyro_y);
     TEST_ASSERT_FLOAT_WITHIN(1e-3, f.gyro_z, g.gyro_z);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3, f.accel_x, g.accel_x);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3, f.accel_y, g.accel_y);
     TEST_ASSERT_FLOAT_WITHIN(1e-3, f.accel_z, g.accel_z);
     TEST_ASSERT_FLOAT_WITHIN(1e-3, f.roll_deg, g.roll_deg);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3, f.pitch_deg, g.pitch_deg);
     TEST_ASSERT_FLOAT_WITHIN(1e-3, f.yaw_deg, g.yaw_deg);
     TEST_ASSERT_FLOAT_WITHIN(1e-3, f.baro_alt_m, g.baro_alt_m);
     for (int i = 0; i < kNumServos; ++i)
