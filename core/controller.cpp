@@ -85,11 +85,15 @@ ServoCommand Controller::update(const ControlInput& in) {
         applyGLimit(demand[static_cast<int>(MixSource::Pitch)], in.imu.accel_z, cfg_.glimit);
 
     // 自动配平：平飞松杆稳态时把增稳修正缓慢并入持久 trim。
+    // 顺序说明：本拍 demand 用的是更新前的 trim，学习器更新后下一拍才生效——
+    //   单拍滞后在学习速率(rate*dt≈0.01)下可忽略，且 trim↑→姿态误差↓→corr↓ 为稳定负反馈。
     if (cfg_.auto_trim_enabled) {
         AutoTrimInputs ati{};
-        ati.enabled = true;
+        ati.enabled = true;            // 外层已门控；保留是因 AutoTrim 设计为可复用、自带门控
         ati.angle_mode = (mode == FlightMode::Angle);
         ati.roll_cmd = roll_cmd; ati.pitch_cmd = pitch_cmd;
+        // 喂 gain*corr：gain=0(飞手关增稳/纯手动)时学习量为 0 -> 不学，符合预期。
+        // 注：此处用 G-limit 前的 corr.pitch（学习只在近水平低速率稳态触发，与高 G 不重叠）。
         ati.roll_correction = gain * corr.roll;
         ati.pitch_correction = gain * corr.pitch;
         Attitude a = ahrs_.attitude();
