@@ -15,6 +15,13 @@
 #if WP_HAS_MAG
 #include "drivers/ist8310.h"
 #endif
+#include "diag/status_line.h"
+
+// 调试日志：默认开（开发期）。正式飞行可在 platformio.ini build_flags 加 -DWP_DEBUG_LOG=0 关闭。
+#ifndef WP_DEBUG_LOG
+#define WP_DEBUG_LOG 1
+#endif
+#define WP_LOG_PERIOD_MS 200   // 状态行打印周期（~5Hz，不刷屏不拖控制环）
 
 static wp::SensorFrontend g_frontend;
 #if WP_HAS_IMU
@@ -86,9 +93,18 @@ void setup() {
     g_frontend.setMagnetometer(&g_mag);
 #endif
     g_frontend.begin();   // probe+init registered drivers; missing ones auto-degrade
-    Serial.printf("[wp] sensor tier=%d imu=%d baro=%d mag=%d\n",
+#if WP_DEBUG_LOG
+    Serial.printf("\n[wp] === boot self-check ===\n");
+    Serial.printf("[wp] I2C SDA=%d SCL=%d @400k\n", wp::kPinI2cSda, wp::kPinI2cScl);
+    Serial.printf("[wp] sensor tier=%d  imu=%d baro=%d mag=%d\n",
                   (int)g_frontend.tier(), g_frontend.has_imu,
                   g_frontend.has_baro, g_frontend.has_mag);
+    Serial.printf("[wp] caps(compiled): IMU=%d BARO=%d MAG=%d GPS=%d AIR=%d BBOX=%d\n",
+                  WP_HAS_IMU, WP_HAS_BARO, WP_HAS_MAG, WP_HAS_GPS, WP_HAS_AIRSPEED, WP_HAS_BLACKBOX);
+    if (!g_frontend.has_imu)
+        Serial.printf("[wp] WARN: no IMU detected -> controller will passthrough (no stabilization)\n");
+    Serial.printf("[wp] === running ===\n");
+#endif
     setupPwm();
 }
 
@@ -124,5 +140,28 @@ void loop() {
 
     wp::ServoCommand out = g_controller.updateFromBundle(ch, bundle, 0.001f, link_ok);
     for (int i = 0; i < wp::kNumServos; ++i) writeServoUs(i, out.servo[i]);
+#if WP_DEBUG_LOG
+    static uint32_t last_log_ms = 0;
+    uint32_t now = millis();
+    if (now - last_log_ms >= WP_LOG_PERIOD_MS) {
+        last_log_ms = now;
+        wp::StatusSnapshot snap{};
+        snap.t_ms = now;
+        snap.mode = (uint8_t)g_controller.activeMode();
+        wp::Attitude att = g_controller.attitude();
+        snap.roll_deg = att.roll_deg; snap.pitch_deg = att.pitch_deg; snap.yaw_deg = att.yaw_deg;
+        snap.link_ok = link_ok;
+        snap.imu_valid = bundle.imu.valid;
+        snap.baro_valid = bundle.baro.valid;
+        snap.mag_valid = bundle.mag.valid;
+        snap.althold_engaged = g_controller.altHoldEngaged();
+        snap.autotrim_learning = g_controller.autoTrimLearning();
+        for (int i = 0; i < wp::kNumServos; ++i) snap.servo[i] = out.servo[i];
+        snap.tier = (int8_t)g_frontend.tier();
+        char line[wp::kStatusLineCap];
+        wp::formatStatusLine(snap, line, sizeof(line));
+        Serial.println(line);
+    }
+#endif
     delay(2);
 }
