@@ -1,5 +1,6 @@
 #include "unity.h"
 #include "blackbox/blackbox_sink.h"
+#include "blackbox/blackbox.h"
 #include <cstring>
 using namespace wp;
 
@@ -38,10 +39,61 @@ void test_ring_rejects_oversize_single_write() {
     TEST_ASSERT_EQUAL_INT(0, (int)sink.usedBytes());
 }
 
+// 关闭时不记录。
+void test_disabled_records_nothing() {
+    uint8_t buf[256];
+    RingBufferSink sink(buf, sizeof(buf));
+    Blackbox bb;
+    BlackboxConfig cfg; cfg.enabled = false; cfg.decimation = 1;
+    bb.begin(cfg, &sink);
+    BlackboxFrame f{};
+    for (int i = 0; i < 10; ++i) bb.logFrame(f);
+    TEST_ASSERT_EQUAL_INT(0, (int)sink.usedBytes());
+}
+
+// 降采样 decimation=4：每 4 次 logFrame 只写 1 帧。
+void test_decimation_writes_every_n() {
+    uint8_t buf[4096];
+    RingBufferSink sink(buf, sizeof(buf));
+    Blackbox bb;
+    BlackboxConfig cfg; cfg.enabled = true; cfg.decimation = 4;
+    bb.begin(cfg, &sink);
+    BlackboxFrame f{};
+    for (int i = 0; i < 8; ++i) bb.logFrame(f);   // 8 次 -> 写 2 帧
+    TEST_ASSERT_EQUAL_INT(2 * kFrameBytes, (int)sink.usedBytes());
+}
+
+// decimation=1：每次都写。
+void test_decimation_one_writes_all() {
+    uint8_t buf[4096];
+    RingBufferSink sink(buf, sizeof(buf));
+    Blackbox bb;
+    BlackboxConfig cfg; cfg.enabled = true; cfg.decimation = 1;
+    bb.begin(cfg, &sink);
+    BlackboxFrame f{};
+    for (int i = 0; i < 5; ++i) bb.logFrame(f);
+    TEST_ASSERT_EQUAL_INT(5 * kFrameBytes, (int)sink.usedBytes());
+    TEST_ASSERT_EQUAL_INT(5, (int)bb.framesWritten());
+}
+
+// 无 sink（begin 传 nullptr）时 logFrame 不崩溃、不计数。
+void test_null_sink_safe() {
+    Blackbox bb;
+    BlackboxConfig cfg; cfg.enabled = true; cfg.decimation = 1;
+    bb.begin(cfg, nullptr);
+    BlackboxFrame f{};
+    bb.logFrame(f);
+    TEST_ASSERT_EQUAL_INT(0, (int)bb.framesWritten());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_ring_accumulates);
     RUN_TEST(test_ring_overwrites_when_full);
     RUN_TEST(test_ring_rejects_oversize_single_write);
+    RUN_TEST(test_disabled_records_nothing);
+    RUN_TEST(test_decimation_writes_every_n);
+    RUN_TEST(test_decimation_one_writes_all);
+    RUN_TEST(test_null_sink_safe);
     return UNITY_END();
 }
