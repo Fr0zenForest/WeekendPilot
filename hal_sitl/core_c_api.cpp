@@ -26,6 +26,9 @@ struct SitlCore {
         wp::ControllerConfig cfg;
         cfg.althold_enabled = true;
         cfg.althold_channel = 7;   // ch8
+        // 自动配平也开（模拟已启用的用户）。JSBSim c172p 对称机体学出 trim≈0，
+        // autotrim 场景只验"开启不破坏平飞稳定"，非验"纠正不对称"（后者须实物）。
+        cfg.auto_trim_enabled = true;
         controller.setConfig(cfg);
     }
 };
