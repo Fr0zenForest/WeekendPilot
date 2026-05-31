@@ -5,7 +5,7 @@ namespace wp {
 // WARNING 新代码（学习律参考 INAV servoAutotrim / ArduPilot，手写非逐行移植）。
 //    机制可单测；JSBSim 对称机体学出 trim≈0，纠正真实不对称的效果未实物验证。
 struct AutoTrimConfig {
-    float rate = 0.5f;            // 学习速率（每秒并入比例）
+    float rate = 0.5f;            // 学习速率（每秒并入比例）。100Hz 下约 50s 从 0 学到 max_trim
     float max_trim = 0.25f;       // trim 限幅 [-max,+max]（归一化舵量）
     float stick_deadband = 0.05f; // 摇杆居中判定（归一化）
     float level_deg = 5.0f;       // 姿态接近水平阈值（roll/pitch 绝对值）

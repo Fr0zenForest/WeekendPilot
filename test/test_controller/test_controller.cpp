@@ -290,7 +290,7 @@ void test_autotrim_enabled_keeps_trim_bounded() {
     wp::ControlInput in{}; fill_centered(in);
     in.channels[4] = 1500;          // Angle
     in.channels[5] = 2000;          // gain 100%
-    in.imu.accel_z = 1.0f;          // 近水平
+    in.imu.accel_z = 1.0f;          // 1g；AHRS 姿态在测试桩里默认 0° -> 满足 level_deg 门控
     for (int i = 0; i < 300; ++i) c.update(in);
     // trim 不得越过 max_trim(默认 0.25)
     TEST_ASSERT_TRUE(c.rollTrim() <= 0.25f + 1e-6f && c.rollTrim() >= -0.25f - 1e-6f);

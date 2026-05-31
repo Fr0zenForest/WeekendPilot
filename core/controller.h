@@ -58,8 +58,12 @@ public:
                                   float dt, bool link_ok);
     Attitude attitude() const { return ahrs_.attitude(); }
     void attachBlackboxSink(IBlackboxSink* sink);
+    // 返回的 trim 是"下一拍将施加"的值（AutoTrim 在本拍 update() 末尾已更新它）。
+    // 取值用于存 NVS / 显示；非本拍实际施加到舵量的值。
     float rollTrim() const { return cfg_.roll_trim; }
     float pitchTrim() const { return cfg_.pitch_trim; }
+    // 清零持久配平（安全：清掉可能学坏并已存进 NVS 的 trim）。需调用方随后 save 配置。
+    void resetTrim() { cfg_.roll_trim = 0.0f; cfg_.pitch_trim = 0.0f; }
 
 private:
     ControllerConfig cfg_;
