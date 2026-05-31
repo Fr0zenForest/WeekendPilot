@@ -45,18 +45,27 @@ void test_flags_render() {
     s.althold_engaged = true; s.autotrim_learning = true;
     char buf[kStatusLineCap];
     formatStatusLine(s, buf, sizeof(buf));
-    // 链路丢失应出现 LINK 标记；定高/配平激活应出现 AH/AT
-    TEST_ASSERT_NOT_NULL(strstr(buf, "LINK"));
+    // 链路丢失须出现 "LINK?"（与 "LINKok" 区分），定高/配平激活须出现 AH/AT
+    TEST_ASSERT_NOT_NULL(strstr(buf, "LINK?"));
+    TEST_ASSERT_NULL(strstr(buf, "LINKok"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "AH"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "AT"));
+    // 链路正常时应是 "LINKok" 且不含 "LINK?"
+    s.link_ok = true;
+    formatStatusLine(s, buf, sizeof(buf));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "LINKok"));
+    TEST_ASSERT_NULL(strstr(buf, "LINK?"));
 }
 
-// 极小缓冲不崩溃、不越界（snprintf 截断语义）。
+// 极小缓冲不崩溃、不越界，且必 NUL 收尾（snprintf 截断语义）。
 void test_tiny_buffer_safe() {
     StatusSnapshot s{}; s.mode = 1;
     char tiny[8];
+    // 预填非 0，确认函数确实写了 NUL 而非缓冲恰好为 0。
+    for (size_t i = 0; i < sizeof(tiny); ++i) tiny[i] = 'X';
     int n = formatStatusLine(s, tiny, sizeof(tiny));
-    TEST_ASSERT_TRUE(tiny[sizeof(tiny) - 1] == '\0' || n >= 0);  // 必 NUL 收尾
+    TEST_ASSERT_TRUE(n > 0);                          // snprintf 返回欲写长度（被截断）
+    TEST_ASSERT_EQUAL_CHAR('\0', tiny[sizeof(tiny) - 1]);  // 末字节必为 NUL
 }
 
 int main() {

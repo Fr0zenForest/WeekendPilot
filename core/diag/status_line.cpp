@@ -16,6 +16,8 @@ const char* modeName(uint8_t m) {
 
 int formatStatusLine(const StatusSnapshot& s, char* out, size_t cap) {
     if (out == nullptr || cap == 0) return 0;
+    // 本格式串只打印前 4 路主舵量（副翼/升降/油门/方向）；编译期保证不越界。
+    static_assert(kNumServos >= 4, "status line prints servo[0..3]");
     // 一行紧凑格式：
     // [t] MODE r/p/y | LINK ok IMU1 BAR0 MAG1 T<tier> | AH AT | s0 s1 s2 s3
     return snprintf(out, cap,

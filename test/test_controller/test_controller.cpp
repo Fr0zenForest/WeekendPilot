@@ -310,6 +310,10 @@ void test_controller_status_getters() {
     in.channels[4] = 1000;       // Off
     c.update(in);
     TEST_ASSERT_EQUAL_UINT8((uint8_t)wp::FlightMode::Off, (uint8_t)c.activeMode());
+
+    in.channels[4] = 2000;       // Rate (>1700)
+    c.update(in);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)wp::FlightMode::Rate, (uint8_t)c.activeMode());
 }
 
 int main() {
