@@ -12,6 +12,7 @@ void Controller::setConfig(const ControllerConfig& cfg) {
     modes_.setConfig(cfg_.stab);
     mixer_.setAirframe(cfg_.airframe);
     althold_.setConfig(cfg_.althold);
+    auto_trim_.setConfig(cfg_.auto_trim);
     blackbox_.begin(cfg_.blackbox, bb_sink_);
 }
 
@@ -63,8 +64,8 @@ ServoCommand Controller::update(const ControlInput& in) {
 
     // 轴需求 = 手动 + gain*PID修正
     float demand[static_cast<int>(MixSource::Count)] = {0};
-    demand[static_cast<int>(MixSource::Roll)]  = roll_cmd  + gain * corr.roll;
-    demand[static_cast<int>(MixSource::Pitch)] = pitch_cmd + gain * corr.pitch;
+    demand[static_cast<int>(MixSource::Roll)]  = roll_cmd  + gain * corr.roll  + cfg_.roll_trim;
+    demand[static_cast<int>(MixSource::Pitch)] = pitch_cmd + gain * corr.pitch + cfg_.pitch_trim;
     demand[static_cast<int>(MixSource::Yaw)]   = yaw_cmd   + gain * corr.yaw;
     // 油门：归一化 [0,1]（throttle 通道 us -> 0..1）
     float throttle_demand = gainFromChannel(in.channels[cfg_.throttle_channel]);
@@ -82,6 +83,25 @@ ServoCommand Controller::update(const ControlInput& in) {
     // G-limit：衰减加载方向的 pitch 需求
     demand[static_cast<int>(MixSource::Pitch)] =
         applyGLimit(demand[static_cast<int>(MixSource::Pitch)], in.imu.accel_z, cfg_.glimit);
+
+    // 自动配平：平飞松杆稳态时把增稳修正缓慢并入持久 trim。
+    // 顺序说明：本拍 demand 用的是更新前的 trim，学习器更新后下一拍才生效——
+    //   单拍滞后在学习速率(rate*dt≈0.01)下可忽略，且 trim↑→姿态误差↓→corr↓ 为稳定负反馈。
+    if (cfg_.auto_trim_enabled) {
+        AutoTrimInputs ati{};
+        ati.enabled = true;            // 外层已门控；保留是因 AutoTrim 设计为可复用、自带门控
+        ati.angle_mode = (mode == FlightMode::Angle);
+        ati.roll_cmd = roll_cmd; ati.pitch_cmd = pitch_cmd;
+        // 喂 gain*corr：gain=0(飞手关增稳/纯手动)时学习量为 0 -> 不学，符合预期。
+        // 注：此处用 G-limit 前的 corr.pitch（学习只在近水平低速率稳态触发，与高 G 不重叠）。
+        ati.roll_correction = gain * corr.roll;
+        ati.pitch_correction = gain * corr.pitch;
+        Attitude a = ahrs_.attitude();
+        ati.roll_deg = a.roll_deg; ati.pitch_deg = a.pitch_deg;
+        ati.gyro_x = in.imu.gyro_x; ati.gyro_y = in.imu.gyro_y;
+        ati.dt = in.dt;
+        auto_trim_.update(ati, cfg_.roll_trim, cfg_.pitch_trim);
+    }
 
     // 混控（覆盖全部 kNumServos：无规则的输出口归中位，AUX 输出靠下方外设表显式路由）
     mixer_.mix(demand, out.servo);

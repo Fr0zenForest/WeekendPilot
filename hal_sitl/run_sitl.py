@@ -54,6 +54,9 @@ def rc_for_time(t, scenario):
     if scenario == 'althold':
         ch[4] = 1500       # Angle 模式
         ch[7] = 2000       # ch8 定高开关拨上
+    if scenario == 'autotrim':
+        ch[4] = 1500       # Angle 模式；摇杆全程居中(默认 1500)让平飞稳态触发自动配平学习
+        ch[2] = 1430       # 巡航油门：避免满油门相位振荡爬升，贴近平飞以测自动配平稳态
     return ch
 
 
@@ -62,7 +65,7 @@ def main():
     ap.add_argument('--dt', type=float, default=0.01)
     ap.add_argument('--secs', type=float, default=10.0)
     ap.add_argument('--out', default='sitl_log.csv')
-    ap.add_argument('--scenario', default='recover', choices=['recover', 'turn', 'althold'])
+    ap.add_argument('--scenario', default='recover', choices=['recover', 'turn', 'althold', 'autotrim'])
     args = ap.parse_args()
 
     dll = resolve_dll()

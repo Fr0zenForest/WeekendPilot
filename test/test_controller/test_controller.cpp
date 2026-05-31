@@ -252,6 +252,51 @@ void test_blackbox_disabled_by_default() {
     TEST_ASSERT_EQUAL_INT(0, (int)sink.usedBytes());
 }
 
+// 预置 roll_trim 非零 -> 居中杆 Angle 模式下 aileron(servo0) 偏离中位（trim 叠加生效）。
+void test_roll_trim_offsets_aileron() {
+    wp::ControllerConfig cfg;
+    cfg.roll_trim = 0.2f;            // 预置配平
+    cfg.gain_channel = 5;
+    wp::Controller c; c.setConfig(cfg);
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;          // Angle
+    in.channels[5] = 0;             // gain 0 -> 隔离 PID，纯看 trim 叠加
+    wp::ServoCommand out = c.update(in);
+    // trim 0.2 -> aileron 经标准混控 ≈ 1600；下界 1520 可抓住混控标度回归。
+    TEST_ASSERT_TRUE(out.servo[0] > 1520);
+}
+
+// 自动配平默认关 -> 多拍 update 后 roll/pitch trim 都不被学习改写。
+void test_autotrim_disabled_keeps_trim_constant() {
+    wp::ControllerConfig cfg;
+    cfg.auto_trim_enabled = false;
+    cfg.roll_trim = 0.0f;
+    cfg.pitch_trim = 0.0f;
+    wp::Controller c; c.setConfig(cfg);
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;          // Angle
+    for (int i = 0; i < 50; ++i) c.update(in);
+    TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0f, c.rollTrim());
+    TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0f, c.pitchTrim());
+}
+
+// 自动配平开启 + 平飞稳态多拍 -> trim 保持有界（不发散），且开启路径不崩溃。
+// （JSBSim 对称机体在 SITL 学出≈0；此处仅验控制器集成路径稳定，见 check_auto_trim.py。）
+void test_autotrim_enabled_keeps_trim_bounded() {
+    wp::ControllerConfig cfg;
+    cfg.auto_trim_enabled = true;
+    cfg.gain_channel = 5;
+    wp::Controller c; c.setConfig(cfg);
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;          // Angle
+    in.channels[5] = 2000;          // gain 100%
+    in.imu.accel_z = 1.0f;          // 1g；AHRS 姿态在测试桩里默认 0° -> 满足 level_deg 门控
+    for (int i = 0; i < 300; ++i) c.update(in);
+    // trim 不得越过 max_trim(默认 0.25)
+    TEST_ASSERT_TRUE(c.rollTrim() <= 0.25f + 1e-6f && c.rollTrim() >= -0.25f - 1e-6f);
+    TEST_ASSERT_TRUE(c.pitchTrim() <= 0.25f + 1e-6f && c.pitchTrim() >= -0.25f - 1e-6f);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_off_mode_is_passthrough);
@@ -268,5 +313,8 @@ int main() {
     RUN_TEST(test_althold_inactive_when_channel_low);
     RUN_TEST(test_blackbox_records_on_update);
     RUN_TEST(test_blackbox_disabled_by_default);
+    RUN_TEST(test_roll_trim_offsets_aileron);
+    RUN_TEST(test_autotrim_disabled_keeps_trim_constant);
+    RUN_TEST(test_autotrim_enabled_keeps_trim_bounded);
     return UNITY_END();
 }

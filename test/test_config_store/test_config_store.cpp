@@ -47,6 +47,22 @@ void test_serialize_roundtrip_preserves_config() {
     TEST_ASSERT_EQUAL_FLOAT(0.099f, out.stab.angle_roll.kp);
 }
 
+// 自动配平相关字段经序列化 round-trip 应保持（序列化是整 struct memcpy，POD 字段自动随之持久化）。
+void test_trim_fields_roundtrip() {
+    ControllerConfig cfg;
+    cfg.roll_trim = 0.123f;
+    cfg.pitch_trim = -0.077f;
+    cfg.auto_trim_enabled = true;
+    uint8_t buf[kConfigBlobSize];
+    uint16_t n = serializeConfig(cfg, buf, sizeof(buf));
+    TEST_ASSERT_TRUE(n > 0);
+    ControllerConfig out;
+    TEST_ASSERT_TRUE(deserializeConfig(buf, n, out));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4, 0.123f, out.roll_trim);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4, -0.077f, out.pitch_trim);
+    TEST_ASSERT_TRUE(out.auto_trim_enabled);
+}
+
 void test_deserialize_rejects_bad_crc() {
     ControllerConfig cfg{};
     uint8_t buf[kConfigBlobSize];
@@ -97,6 +113,7 @@ int main() {
     RUN_TEST(test_pc_test_build_enables_all_capabilities);
     RUN_TEST(test_board_pins_defined);
     RUN_TEST(test_serialize_roundtrip_preserves_config);
+    RUN_TEST(test_trim_fields_roundtrip);
     RUN_TEST(test_deserialize_rejects_bad_crc);
     RUN_TEST(test_deserialize_rejects_wrong_version);
     RUN_TEST(test_deserialize_rejects_bad_magic);
