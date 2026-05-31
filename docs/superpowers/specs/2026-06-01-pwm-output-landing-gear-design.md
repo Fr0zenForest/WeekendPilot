@@ -1,7 +1,7 @@
 # 多路 PWM 输出扩展 + 起落架控制 — 设计文档
 
 - 日期：2026-06-01
-- 状态：设计待评审
+- 状态：已实现（PC 测试 25 套全绿 + 板载门控全组合编译通过）
 - 关联：[[weekendpilot-config-sensor-architecture]]、[[weekendpilot-dev-progress]]、主设计 `docs/superpowers/specs/2026-05-30-weekendpilot-design.md`
 - 阶段定位：阶段 3 外设扩展（与 Alt-Hold / Auto-trim 同级，均为"全写好先不使能"门控功能）
 
@@ -289,3 +289,15 @@ board_config.h 新增常量（门控）：`kAddrPwmExpander`、`kAddrCurrentSens
 - `controller.h:24-47` ControllerConfig → 新增 LandingGearConfig 字段 + version bump。
 - `board_config.h` → 新增扩展芯片地址/ALERT 脚常量（门控）。
 - `capabilities.h` → 新增 WP_HAS_PWM_EXPANDER / WP_HAS_LANDING_GEAR + constexpr 镜像。
+
+## 实现记录（2026-06-01 落地，与设计的偏差）
+
+实际实现见计划 `docs/superpowers/plans/2026-06-01-pwm-output-landing-gear.md`（12 任务，TDD，subagent 开发 + Opus review）。与本设计文档的偏差/细化如下：
+
+1. **`ILandingGearActuator` 接口最终形态**：设计稿写的是 `drive(int16_t)`+`stop()` 两个方法（§3.2.5 示意）；实现改为单方法 `apply(GearDrive)`，`GearDrive` 为 `{Stop,Deploy,Retract}` 枚举。语义更清晰，状态机只产出抽象方向，HAL 翻译为 PWM/H 桥电平。
+2. **层 1 起落架边界修正**：`PeripheralMap` 受 `servo_out < kNumServos` 限制，现成控制器只能接 LEDC 的 0~7 路（标准布局 4~7 空闲）；扩展通道（PCA9685 ≥8）的可用性由层 2 `GearServo` 经 `CompositeServoOutput::writeUs` 直接驱动证明。见 §3.1 已修正。
+3. **起落架编排位置**：未进 `Controller::update`（它只产 8 路 `ServoCommand` 且须保持纯净），改在 HAL 主循环 `main.cpp` 编排（读 RC ch9 + INA3221 → `LandingGear` → `GearServo`）。
+4. **失控安全**：链路丢失时 `deploy_cmd` 维持当前状态（`state==Deployed`），状态机仅响应跳变沿，故失控不自行收放。
+5. **⚠️ `sizeof(ControllerConfig)` 实测 = 224 字节**（加 LandingGearConfig 后）。距 `config_store.cpp` 的 `static_assert(<=255)` 仅余 31 字节。**下次再加配置字段前必查**：若超 255 需把 blob 的 size 字段从 uint8 扩成 uint16 并升 `kConfigVersion`（config_store.cpp 注释已写明路径）。
+
+实现验证：PC ctest 22→25 套全绿（新增 test_composite_servo_output / test_ina3221_decode / test_landing_gear，及 test_config_store 内 +1 往返用例）。板载 `pio run -e weekendpilot_s3` 默认门控关 + 全开门控 + 仅起落架(无扩展) 三组合均编译通过（RAM 9.9% / Flash 10.6%）。⚠️ 实物待整定项见 §9 + 计划末尾（堵转电流阈值 / shunt 电阻 / H桥占空比 / 上电默认态 / ALERT 引脚冲突核对）。所有功能默认 `enabled=false` + 门控关，符合"全写好先不使能"。
