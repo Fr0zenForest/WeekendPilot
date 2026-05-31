@@ -61,6 +61,35 @@ void test_pilot_override_releases_and_relatches() {
     TEST_ASSERT_TRUE(drive2);
 }
 
+// 低于目标 -> 俯仰指令为正（抬头爬升）；高于目标 -> 为负（低头下降）。
+void test_cascade_pitch_sign() {
+    AltitudeHold ah;
+    float pc = 0.0f;
+    ah.update(true, true, 100.0f, 0.0f, 0.02f, pc);   // 接管，锁 100m
+    // 掉到 90m：低于目标，应命令抬头 (>0)
+    ah.update(true, true, 90.0f, 0.0f, 0.02f, pc);
+    TEST_ASSERT_TRUE(pc > 0.0f);
+    // 升到 110m：高于目标，应命令低头 (<0)
+    AltitudeHold ah2;
+    float pc2 = 0.0f;
+    ah2.update(true, true, 100.0f, 0.0f, 0.02f, pc2);
+    ah2.update(true, true, 110.0f, 0.0f, 0.02f, pc2);
+    TEST_ASSERT_TRUE(pc2 < 0.0f);
+}
+
+// 目标爬升率被 max_climb_mps 限幅：大高度误差不应让目标爬升率爆掉。
+void test_climb_target_clamped() {
+    AltitudeHold ah;
+    AltHoldConfig c;            // kp_alt 0.05, max_climb 3.0 -> 误差>60m 即饱和
+    ah.setConfig(c);
+    float pc = 0.0f;
+    ah.update(true, true, 100.0f, 0.0f, 0.02f, pc);   // 锁 100m
+    // 掉到 0m：误差 100m，外环目标爬升率应被钳在 +3 m/s，俯仰指令仍在 [-1,1]
+    ah.update(true, true, 0.0f, 0.0f, 0.02f, pc);
+    TEST_ASSERT_TRUE(pc <= 1.0f && pc >= -1.0f);
+    TEST_ASSERT_TRUE(pc > 0.0f);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_not_engaged_when_no_request);
@@ -68,5 +97,7 @@ int main() {
     RUN_TEST(test_engage_latches_target);
     RUN_TEST(test_climb_rate_sign_positive);
     RUN_TEST(test_pilot_override_releases_and_relatches);
+    RUN_TEST(test_cascade_pitch_sign);
+    RUN_TEST(test_climb_target_clamped);
     return UNITY_END();
 }
