@@ -39,10 +39,10 @@ bool Pca9685Output::begin() {
 }
 
 void Pca9685Output::setFrequencyHz(uint16_t hz) {
-    freq_hz_ = hz;
     // prescale = round(25MHz / (4096 * freq)) - 1（datasheet §7.3.5）
     if (hz < 24) hz = 24;
     if (hz > 1526) hz = 1526;
+    freq_hz_ = hz;   // 存夹取后的值：writeUs 的周期换算与硬件 prescale 必须一致
     uint8_t prescale = (uint8_t)((25000000.0 / (4096.0 * hz)) - 0.5);
     uint8_t m1 = 0;
     readReg(REG_MODE1, m1);

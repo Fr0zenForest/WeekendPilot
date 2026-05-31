@@ -15,6 +15,7 @@ bool LedcOutput::begin() {
 }
 
 void LedcOutput::setFrequencyHz(uint16_t hz) {
+    if (hz < 24) hz = 24;        // 防 0/过低：writeUs 用 1e6/freq 做周期，0 会除零
     freq_hz_ = hz;
     for (int i = 0; i < count_; ++i) ledcSetup(i, freq_hz_, 16);
 }
