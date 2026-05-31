@@ -6,6 +6,7 @@
 #include "mixer/mixer.h"
 #include "safety/glimit.h"
 #include "sensors/sensor_bundle.h"
+#include "nav/altitude_hold.h"
 
 namespace wp {
 
@@ -33,6 +34,9 @@ struct ControllerConfig {
     GLimitConfig glimit;
     PeripheralMap peripherals[kMaxPeripherals];
     StabConfig stab;
+    bool    althold_enabled = false;   // 总开关（默认关，全写好先不使能）
+    uint8_t althold_channel = 7;       // ch8：拨上启用定高
+    AltHoldConfig althold;
 };
 
 class Controller {
@@ -52,6 +56,7 @@ private:
     AhrsMahony ahrs_;
     ModeController modes_;
     Mixer mixer_;
+    AltitudeHold althold_;
 };
 
 }  // namespace wp

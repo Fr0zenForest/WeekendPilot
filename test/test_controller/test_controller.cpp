@@ -153,6 +153,65 @@ void test_update_from_bundle_matches_on_invalid_imu() {
         TEST_ASSERT_EQUAL_UINT16(viaInput.servo[i], viaBundle.servo[i]);
 }
 
+void test_althold_drives_elevator_when_below_target() {
+    wp::Controller c;
+    wp::ControllerConfig cfg;
+    cfg.althold_enabled = true;
+    cfg.althold_channel = 7;          // ch8 作定高开关
+    c.setConfig(cfg);
+
+    wp::ControlInput in{};
+    for (int i = 0; i < wp::kNumChannels; ++i) in.channels[i] = 1500;
+    in.channels[cfg.mode_channel] = 1500;     // Angle
+    in.channels[cfg.gain_channel] = 2000;     // gain 100%
+    in.channels[cfg.althold_channel] = 1000;  // 定高先关
+    in.dt = 0.02f; in.link_ok = true;
+    in.imu.valid = true; in.imu.accel_z = 1.0f;
+    in.baro.valid = true; in.baro.altitude_m = 100.0f;
+
+    // 关定高跑一拍，记录基准 elevator
+    wp::ServoCommand off = c.update(in);
+
+    // 开定高，锁 100m；随后飞机掉到 90m
+    in.channels[cfg.althold_channel] = 2000;
+    c.update(in);                              // 接管，锁 100m
+    in.baro.altitude_m = 90.0f;
+    wp::ServoCommand on = c.update(in);
+
+    // 低于目标 -> 抬头修正。约定 elevator = servo[1]，抬头方向应使其偏离基准。
+    TEST_ASSERT_TRUE(on.servo[1] != off.servo[1]);
+}
+
+// 定高通道未拨上 -> 不接管：两台同样喂入的控制器（一台高度恒定、一台高度大变）
+// 升降输出应逐字节相同。两台独立 Controller 各自从同一初态推进，隔离 AHRS 积分漂移。
+void test_althold_inactive_when_channel_low() {
+    auto make = [](){
+        wp::Controller c;
+        wp::ControllerConfig cfg;
+        cfg.althold_enabled = true;
+        cfg.althold_channel = 7;
+        c.setConfig(cfg);
+        return c;
+    };
+    wp::Controller c_const = make();   // 高度恒定 100m
+    wp::Controller c_vary  = make();   // 高度跌到 50m
+    wp::ControlInput in{};
+    for (int i = 0; i < wp::kNumChannels; ++i) in.channels[i] = 1500;
+    in.channels[4] = 1500;                    // Angle
+    in.channels[7] = 1000;                    // 定高通道关
+    in.dt = 0.02f; in.link_ok = true;
+    in.imu.valid = true; in.imu.accel_z = 1.0f;
+
+    // 第 1 拍两台完全相同（都在 100m）
+    in.baro.valid = true; in.baro.altitude_m = 100.0f;
+    c_const.update(in);
+    c_vary.update(in);
+    // 第 2 拍：c_const 仍 100m，c_vary 跌到 50m；通道关 -> 定高不接管
+    in.baro.altitude_m = 100.0f; wp::ServoCommand a = c_const.update(in);
+    in.baro.altitude_m = 50.0f;  wp::ServoCommand b = c_vary.update(in);
+    TEST_ASSERT_EQUAL_UINT16(a.servo[1], b.servo[1]);  // 高度变化不影响升降（未接管）
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_off_mode_is_passthrough);
@@ -165,5 +224,7 @@ int main() {
     RUN_TEST(test_flap_disabled_keeps_flap_demand_zero);
     RUN_TEST(test_update_from_bundle_matches_control_input);
     RUN_TEST(test_update_from_bundle_matches_on_invalid_imu);
+    RUN_TEST(test_althold_drives_elevator_when_below_target);
+    RUN_TEST(test_althold_inactive_when_channel_low);
     return UNITY_END();
 }

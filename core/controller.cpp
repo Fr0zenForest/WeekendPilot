@@ -11,6 +11,7 @@ void Controller::setConfig(const ControllerConfig& cfg) {
     cfg_ = cfg;
     modes_.setConfig(cfg_.stab);
     mixer_.setAirframe(cfg_.airframe);
+    althold_.setConfig(cfg_.althold);
 }
 
 ServoCommand Controller::update(const ControlInput& in) {
@@ -35,6 +36,16 @@ ServoCommand Controller::update(const ControlInput& in) {
     float yaw_cmd   = channelToNorm(in.channels[cfg_.yaw_channel]);
     float gain      = gainFromChannel(in.channels[cfg_.gain_channel]);
     bool throttle_low = in.channels[cfg_.throttle_channel] < cfg_.throttle_low_us;
+
+    // 定高接管：仅 Angle 模式 + 总开关 + 通道拨上 + 气压有效时驱动俯仰。
+    bool althold_req = cfg_.althold_enabled
+                       && mode == FlightMode::Angle
+                       && in.channels[cfg_.althold_channel] > 1700;
+    float ah_pitch = 0.0f;
+    if (althold_.update(althold_req, in.baro.valid, in.baro.altitude_m,
+                        pitch_cmd, in.dt, ah_pitch)) {
+        pitch_cmd = ah_pitch;   // 用定高俯仰指令替换飞手俯仰杆，喂给 Angle 内环
+    }
 
     StabCorrection corr = modes_.update(mode, roll_cmd, pitch_cmd, yaw_cmd,
                                         ahrs_.attitude(), in.imu, in.dt, throttle_low);
