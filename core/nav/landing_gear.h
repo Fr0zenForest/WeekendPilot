@@ -46,6 +46,7 @@ public:
     void initState(GearState s);
     LandingGearOutput update(const LandingGearInputs& in);
     GearState state() const { return state_; }
+    bool enabled() const { return cfg_.enabled; }
 
 private:
     LandingGearConfig cfg_;

@@ -181,7 +181,7 @@ void loop() {
     wp::ServoCommand out = g_controller.updateFromBundle(ch, bundle, 0.001f, link_ok);
     for (int i = 0; i < wp::kNumServos; ++i) g_out.writeUs(i, out.servo[i]);
 #if WP_HAS_LANDING_GEAR
-    {
+    if (g_gear.enabled()) {
         wp::LandingGearInputs gi;
         // 收放指令：拨杆 > 1500µs 视为"放下"。link_ok 交给状态机：失控时它冻结指令沿，
         // 维持当前动作，绝不反转或重启 Fault（见 LandingGear::update）。
