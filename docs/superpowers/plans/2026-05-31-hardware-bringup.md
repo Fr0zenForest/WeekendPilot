@@ -1120,3 +1120,10 @@ Expected: angle-hold ≈ 7.0°→1.3°，turn-hold ≈ 47.9°/9.5°（与基线�
 - **Placeholder 扫描：** Task 2 的 `// WP_BMP390_COMP_PLACEHOLDER` 是 Step 4→4b 的有意续写锚点，Step 4b 明确要求替换，非缺陷。BMP390 测试 raw 经验值允许实现者微调（已注明：调测试不调公式）。
 - **类型一致性：** `ImuSample`(gyro_x/y/z,accel_x/y/z,valid)、`BaroSample`(altitude_m,valid)、`MagSample` 与 `types.h` 一致；`IGyroAccel/IBarometer`(probe/init/read)、`IConfigBackend`(write/read)、`SensorFrontend`(setGyroAccel/setBarometer/setMagnetometer/begin/poll/tier/has_*)、`Controller::updateFromBundle((uint16_t(&)[kNumChannels]),bundle,dt,link_ok)` 全部对现有定义核对一致。`icm42688Decode`/`bmp390ParseCalib`/`bmp390CompensateTemperature`/`bmp390CompensatePressure`/`bmp390Decode`/`baroPressureToAltitude`/`BaroAltitude` 命名跨任务一致。
 - **常量溯源：** ICM（0x68/0x47/scales/init 序列）、BMP390（0x76/0x60/trim 公式/init 序列）均对 ElrsRX 源码核对；ISA 高度公式为标准大气模型。
+
+## ⚠️ 上实机前的遗留项（最终 Opus 评审，Minor，不阻塞合并）
+
+> 这两项不影响合并（已门控、已标注、SITL 用合成数据），但**真硬件起飞前应处理**：
+
+1. **BMP390 首读锁基准时 IIR 滤波（coeff 3）仍在沉降**（`bmp390.cpp` read 的 `ref_set_` 首读 latch）。init 后第一帧可能处于滤波过渡态，使零点偏几米。**建议：** 锁基准前丢弃/平均前几帧。属起飞前置零流程的一部分。
+2. **main.cpp 传 `dt=0.001f` 硬编码**，但 `loop()` 实际 ~500Hz（delay(2)+计算）。真传感器接入后 dt 误差直接影响 AHRS/PID 积分时序。**建议：** 用 `micros()` 差测实际 dt。属阶段 3 实机调参前置项。
