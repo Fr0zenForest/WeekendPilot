@@ -111,7 +111,8 @@ public:
 
 - **信号通信**：一路 PWM 输出口，复用 §2.4 的 `IServoOutput`。
 - **本质已存在**：`controller.h:18` 的 `PeripheralMap`（RC 通道裸 us 直通到某 servo 口，`controller.cpp:111-115` 已实现）即此功能。只需把某路 PWM 接到起落架控制器，把一个 RC 通道（如拨杆 ch9）映射过去。
-- **硬件成本**：0。需做的仅是确认 `PeripheralMap` 能路由到扩展芯片输出口（§2.4 输出层做好后自然支持）。
+- **硬件成本**：0。
+- ⚠️ **边界修正**：`PeripheralMap` 受 `p.servo_out < kNumServos` 限制，且 `ServoCommand` 仅 8 路宽 —— 故层 1 现成控制器只能接 **LEDC 的 0~7 路**（标准布局主舵面占 0~3，4~7 空闲可直接用）。把外设路由到 PCA9685 扩展通道（≥8）需让 `PeripheralMap`/`ServoCommand` 支持扩展索引，属后续扩展（YAGNI，本设计与首版计划不含）。扩展通道的可用性由层 2 的 `GearServo` 经 `CompositeServoOutput::writeUs` 直接驱动来证明。
 
 ### 3.2 层 2：飞控自管堵转检测（3 路电流检测）
 
