@@ -183,8 +183,10 @@ void loop() {
 #if WP_HAS_LANDING_GEAR
     {
         wp::LandingGearInputs gi;
-        // 收放指令：拨杆 > 1500µs 视为"放下"。link 丢失时维持上一指令（不强制收放）。
-        gi.deploy_cmd = link_ok ? (g_channels[kGearRcChannel] > 1500) : g_gear.state() == wp::GearState::Deployed;
+        // 收放指令：拨杆 > 1500µs 视为"放下"。link_ok 交给状态机：失控时它冻结指令沿，
+        // 维持当前动作，绝不反转或重启 Fault（见 LandingGear::update）。
+        gi.deploy_cmd = (g_channels[kGearRcChannel] > 1500);
+        gi.link_ok = link_ok;
         float amps = 0.0f;
         if (g_ina.readCurrent(kGearCurrentCh, kGearShuntOhm, amps)) gi.current_a = amps;
         gi.alert = (digitalRead(wp::kPinGearAlert) == LOW);   // INA3221 ALERT 低有效

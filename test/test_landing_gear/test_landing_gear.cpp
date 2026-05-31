@@ -118,6 +118,34 @@ void test_init_state_no_drive() {
     TEST_ASSERT_EQUAL(GearDrive::Stop, o.drive);   // 不动
 }
 
+// 链路丢失不在行程中反转：Deploying 中途丢链 -> 仍 Deploying（不退到 Retracting）
+void test_link_loss_does_not_reverse_mid_travel() {
+    LandingGear g; g.setConfig(cfg());
+    LandingGearInputs in; in.dt = 0.02f;
+    in.deploy_cmd = false; in.link_ok = true; g.update(in);   // 播种"收"
+    in.deploy_cmd = true;  g.update(in);                       // -> Deploying
+    // 链路丢失，遥控值此刻可能任意（模拟收到 deploy_cmd=false 的杂值）
+    in.link_ok = false; in.deploy_cmd = false; in.current_a = 0.0f;
+    LandingGearOutput o = g.update(in);
+    TEST_ASSERT_EQUAL(GearState::Deploying, o.state);   // 不反转
+    TEST_ASSERT_EQUAL(GearDrive::Deploy, o.drive);
+}
+
+// 链路丢失不重新驱动已 Fault 的执行机构
+void test_link_loss_does_not_restart_fault() {
+    LandingGear g; g.setConfig(cfg());
+    LandingGearInputs in; in.dt = 0.02f;
+    in.deploy_cmd = false; in.link_ok = true; g.update(in);
+    in.deploy_cmd = true;  g.update(in);                       // Deploying
+    in.current_a = 0.0f;
+    for (int i = 0; i < 205; ++i) g.update(in);                // 超时 -> Fault
+    // 链路丢失 + 杂值 deploy_cmd=false
+    in.link_ok = false; in.deploy_cmd = false;
+    LandingGearOutput o = g.update(in);
+    TEST_ASSERT_EQUAL(GearState::Fault, o.state);   // 仍 Fault
+    TEST_ASSERT_EQUAL(GearDrive::Stop, o.drive);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_disabled_always_stop);
@@ -129,5 +157,7 @@ int main() {
     RUN_TEST(test_retract_cycle);
     RUN_TEST(test_timeout_enters_fault);
     RUN_TEST(test_init_state_no_drive);
+    RUN_TEST(test_link_loss_does_not_reverse_mid_travel);
+    RUN_TEST(test_link_loss_does_not_restart_fault);
     return UNITY_END();
 }

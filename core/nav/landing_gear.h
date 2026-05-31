@@ -30,6 +30,7 @@ struct LandingGearInputs {
     float current_a = 0.0f;     // 本路电流采样（A，来自 INA3221）
     bool  alert = false;        // INA3221 硬件 ALERT（快速路径，可选；为 true 时等价电流超阈）
     float dt = 0.0f;            // 秒
+    bool  link_ok = true;       // CRSF 链路有效；丢失时冻结指令沿处理（不收放/不退Fault）
 };
 
 struct LandingGearOutput {

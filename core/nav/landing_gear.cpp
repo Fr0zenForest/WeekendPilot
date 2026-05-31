@@ -19,15 +19,20 @@ LandingGearOutput LandingGear::update(const LandingGearInputs& in) {
         return out;
     }
 
+    // 链路丢失：冻结指令沿处理 —— 不记录新指令、不触发收放、不退出 Fault。
+    // 失控时维持当前动作（Deploying/Retracting 继续靠堵转自然停；稳态保持），
+    // 绝不因失控反转起落架或重新驱动已 Fault 的执行机构。
     // 指令跳变沿检测：首拍只播种，不动作（防上电误触发，设计文档 §9）。
     bool edge_deploy = false, edge_retract = false;
-    if (!have_last_cmd_) {
-        have_last_cmd_ = true;
-    } else if (in.deploy_cmd != last_deploy_cmd_) {
-        edge_deploy  = in.deploy_cmd;     // false->true：放下
-        edge_retract = !in.deploy_cmd;    // true->false：收起
+    if (in.link_ok) {
+        if (!have_last_cmd_) {
+            have_last_cmd_ = true;
+        } else if (in.deploy_cmd != last_deploy_cmd_) {
+            edge_deploy  = in.deploy_cmd;     // false->true：放下
+            edge_retract = !in.deploy_cmd;    // true->false：收起
+        }
+        last_deploy_cmd_ = in.deploy_cmd;
     }
-    last_deploy_cmd_ = in.deploy_cmd;
 
     // 跳变触发状态切换（任意稳态/行程态收到反向指令都重启对应行程）。
     if (edge_deploy && state_ != GearState::Deploying) {
