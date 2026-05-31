@@ -178,8 +178,8 @@ void test_althold_drives_elevator_when_below_target() {
     in.baro.altitude_m = 90.0f;
     wp::ServoCommand on = c.update(in);
 
-    // 低于目标 -> 抬头修正。约定 elevator = servo[1]，抬头方向应使其偏离基准。
-    TEST_ASSERT_TRUE(on.servo[1] != off.servo[1]);
+    // 低于目标 -> 抬头修正 -> 升降舵向抬头方向偏（servo[1] 高于基准）。
+    TEST_ASSERT_TRUE(on.servo[1] > off.servo[1]);
 }
 
 // 定高通道未拨上 -> 不接管：两台同样喂入的控制器（一台高度恒定、一台高度大变）

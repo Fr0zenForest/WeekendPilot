@@ -19,6 +19,10 @@ struct SitlCore {
         frontend.setMagnetometer(&mag);
         frontend.setBarometer(&baro);
         frontend.begin();   // probe+init 三个 Mock（present 默认 true）-> 探测档位
+        // SITL 把定高总开关打开，模拟"已在配置里启用定高的用户"——是否真正接管仍由
+        // RC 通道 ch8 门控（同真机：配置启用 + 拨杆arm）。生产默认 althold_enabled=false；
+        // SITL 故意置 true 以便 althold 场景能用 ch8 激活。其它场景（recover/turn）把 ch8
+        // 留在 1500（低于阈值）故定高不接管，与改动前行为一致。新增场景须显式拉低 ch8。
         wp::ControllerConfig cfg;
         cfg.althold_enabled = true;
         cfg.althold_channel = 7;   // ch8
