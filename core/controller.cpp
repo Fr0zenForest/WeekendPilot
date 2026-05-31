@@ -12,9 +12,16 @@ void Controller::setConfig(const ControllerConfig& cfg) {
     modes_.setConfig(cfg_.stab);
     mixer_.setAirframe(cfg_.airframe);
     althold_.setConfig(cfg_.althold);
+    blackbox_.begin(cfg_.blackbox, bb_sink_);
+}
+
+void Controller::attachBlackboxSink(IBlackboxSink* sink) {
+    bb_sink_ = sink;
+    blackbox_.begin(cfg_.blackbox, bb_sink_);
 }
 
 ServoCommand Controller::update(const ControlInput& in) {
+    frame_t_ms_ += static_cast<uint32_t>(in.dt * 1000.0f + 0.5f);
     ServoCommand out{};
     // TODO(phase3): 失效回退按 servo[i]=channels[i] 直通，仅 Standard 布局正确；
     // V尾/elevon/flaperon 在失效态会得到错误的舵面映射（见设计文档附录 D 已知限制）。
@@ -82,6 +89,23 @@ ServoCommand Controller::update(const ControlInput& in) {
         const PeripheralMap& p = cfg_.peripherals[i];
         if (p.enabled && p.servo_out < kNumServos && p.rc_channel < kNumChannels)
             out.servo[p.servo_out] = in.channels[p.rc_channel];
+    }
+
+    // 黑匣子：把本拍在控状态编码落盘（降采样在 Blackbox 内部）。
+    // 注：Off/链路丢失/IMU 失效在前部早返回，不记录（黑匣子只覆盖在控状态）。
+    if (cfg_.blackbox.enabled) {
+        BlackboxFrame fr{};
+        fr.t_ms = frame_t_ms_;
+        fr.gyro_x = in.imu.gyro_x; fr.gyro_y = in.imu.gyro_y; fr.gyro_z = in.imu.gyro_z;
+        fr.accel_x = in.imu.accel_x; fr.accel_y = in.imu.accel_y; fr.accel_z = in.imu.accel_z;
+        Attitude a = ahrs_.attitude();
+        fr.roll_deg = a.roll_deg; fr.pitch_deg = a.pitch_deg; fr.yaw_deg = a.yaw_deg;
+        for (int i = 0; i < kNumServos; ++i) fr.servo[i] = out.servo[i];
+        fr.baro_alt_m = in.baro.altitude_m;
+        fr.mode = static_cast<uint8_t>(mode);
+        fr.flags = uint8_t((in.link_ok ? 1 : 0) | (in.imu.valid ? 2 : 0) |
+                           (in.baro.valid ? 4 : 0) | (althold_active ? 8 : 0));
+        blackbox_.logFrame(fr);
     }
     return out;
 }

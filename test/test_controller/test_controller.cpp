@@ -1,6 +1,8 @@
 #include <unity.h>
 #include "controller.h"
 #include "sensors/sensor_frontend.h"
+#include "blackbox/blackbox_sink.h"
+#include "blackbox/blackbox_frame.h"
 
 void setUp() {}
 void tearDown() {}
@@ -212,6 +214,41 @@ void test_althold_inactive_when_channel_low() {
     TEST_ASSERT_EQUAL_UINT16(a.servo[1], b.servo[1]);  // 高度变化不影响升降（未接管）
 }
 
+// 黑匣子使能 + 注入 sink -> update() 落帧；解出的 mode 与输入模式一致。
+void test_blackbox_records_on_update() {
+    static uint8_t bb_buf[4096];
+    wp::RingBufferSink sink(bb_buf, sizeof(bb_buf));
+    wp::Controller c;
+    wp::ControllerConfig cfg;
+    cfg.blackbox.enabled = true;
+    cfg.blackbox.decimation = 1;     // 每拍都记
+    c.setConfig(cfg);
+    c.attachBlackboxSink(&sink);
+
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;           // Angle
+    in.baro.valid = true; in.baro.altitude_m = 50.0f;
+    c.update(in);
+
+    TEST_ASSERT_EQUAL_INT(wp::kFrameBytes, (int)sink.usedBytes());
+    wp::BlackboxFrame g{};
+    wp::decodeFrame(bb_buf, g);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)wp::FlightMode::Angle, g.mode);
+    TEST_ASSERT_FLOAT_WITHIN(1e-2, 50.0f, g.baro_alt_m);
+}
+
+// 黑匣子默认关 -> 不注入 sink 也不记录，行为不变。
+void test_blackbox_disabled_by_default() {
+    static uint8_t bb_buf[256];
+    wp::RingBufferSink sink(bb_buf, sizeof(bb_buf));
+    wp::Controller c;                // 默认 cfg：blackbox.enabled=false
+    c.attachBlackboxSink(&sink);
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;
+    c.update(in);
+    TEST_ASSERT_EQUAL_INT(0, (int)sink.usedBytes());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_off_mode_is_passthrough);
@@ -226,5 +263,7 @@ int main() {
     RUN_TEST(test_update_from_bundle_matches_on_invalid_imu);
     RUN_TEST(test_althold_drives_elevator_when_below_target);
     RUN_TEST(test_althold_inactive_when_channel_low);
+    RUN_TEST(test_blackbox_records_on_update);
+    RUN_TEST(test_blackbox_disabled_by_default);
     return UNITY_END();
 }
