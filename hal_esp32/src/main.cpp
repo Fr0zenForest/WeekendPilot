@@ -16,6 +16,11 @@
 #include "drivers/ist8310.h"
 #endif
 #include "diag/status_line.h"
+#include "io/composite_servo_output.h"
+#include "io/ledc_output.h"
+#if WP_HAS_PWM_EXPANDER
+#include "io/pca9685_output.h"
+#endif
 
 // 调试日志：默认开（开发期）。正式飞行可在 platformio.ini build_flags 加 -DWP_DEBUG_LOG=0 关闭。
 #ifndef WP_DEBUG_LOG
@@ -35,6 +40,11 @@ static wp::Ist8310 g_mag(Wire, wp::kAddrMag);
 #endif
 
 static const int kServoPins[wp::kNumServos] = {1, 2, 8, 9, 10, 15, 16, 17};
+static wp::CompositeServoOutput g_out;
+static wp::LedcOutput g_ledc(kServoPins, wp::kNumServos);
+#if WP_HAS_PWM_EXPANDER
+static wp::Pca9685Output g_pca(Wire, wp::kAddrPwmExpander);
+#endif
 static const int kCrsfRxPin = 44;
 static const int kCrsfTxPin = 43;
 
@@ -45,20 +55,6 @@ wp::Controller g_controller;
 uint8_t  g_buf[64];
 uint16_t g_channels[wp::kNumChannels];
 uint32_t g_lastRcMs = 0;
-
-void setupPwm() {
-    for (int i = 0; i < wp::kNumServos; ++i) {
-        ledcSetup(i, 50, 16);
-        ledcAttachPin(kServoPins[i], i);
-        ledcWrite(i, (uint32_t)(1500.0 / 20000.0 * 65535));
-    }
-}
-
-void writeServoUs(int ch, uint16_t us) {
-    if (us < 1000) us = 1000;
-    if (us > 2000) us = 2000;
-    ledcWrite(ch, (uint32_t)((double)us / 20000.0 * 65535));
-}
 
 void parseCrsfRc(const uint8_t* p) {
     const uint8_t* d = p + 3;
@@ -113,7 +109,12 @@ void setup() {
         Serial.printf("[wp] WARN: no IMU detected -> controller will passthrough (no stabilization)\n");
     Serial.printf("[wp] === running ===\n");
 #endif
-    setupPwm();
+    g_out.addBackend(&g_ledc);
+#if WP_HAS_PWM_EXPANDER
+    g_out.addBackend(&g_pca);
+#endif
+    g_out.begin();
+    g_out.setFrequencyHz(50);   // D2：默认 50Hz，将来从 NVS config 读
     // 状态灯转暗绿：系统初始化完成、即将进入控制循环。低亮度防晃眼。
     neopixelWrite(wp::kPinStatusLed, 0, 12, 0);   // 暗绿
 }
@@ -149,7 +150,7 @@ void loop() {
     g_frontend.poll(bundle);   // missing/failed samples have valid=false
 
     wp::ServoCommand out = g_controller.updateFromBundle(ch, bundle, 0.001f, link_ok);
-    for (int i = 0; i < wp::kNumServos; ++i) writeServoUs(i, out.servo[i]);
+    for (int i = 0; i < wp::kNumServos; ++i) g_out.writeUs(i, out.servo[i]);
 #if WP_DEBUG_LOG
     static uint32_t last_log_ms = 0;
     uint32_t now = millis();
