@@ -114,6 +114,12 @@ void test_throttle_delta_zero_when_disengaged() {
     TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0f, ah.throttleDelta());
     ah.update(true, false, 100.0f, 0.0f, 0.02f, pc);   // 气压无效
     TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0f, ah.throttleDelta());
+    // 已接管后飞手推杆超死区交还手动 -> 油门增量也必须归零（第三条脱离路径）
+    AltitudeHold ah3;
+    float pc3 = 0.0f;
+    ah3.update(true, true, 100.0f, 0.0f, 0.02f, pc3);   // 接管
+    ah3.update(true, true, 100.0f, 0.6f, 0.02f, pc3);   // 飞手覆盖
+    TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0f, ah3.throttleDelta());
 }
 
 int main() {

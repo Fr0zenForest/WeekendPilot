@@ -86,7 +86,10 @@ def main():
             if args.scenario == 'recover' and 3.0 <= t < 3.4:
                 fdm.set_property_value('fcs/aileron-cmd-norm', 0.8)  # roll kick
             if args.scenario == 'althold' and 3.0 <= t < 3.6:
-                fdm.set_property_value('fcs/elevator-cmd-norm', -0.5)  # 推杆下压偏离锁定高度
+                # 注入扰动脉冲。注意 write_servos 已对升降舵反接，但这里是直接写
+                # JSBSim 的 elevator-cmd-norm，按 JSBSim 约定 -0.5 = 机头上抬，
+                # 所以飞机先冲高再由定高拉回（见 check_alt_hold.py 的峰值偏离判据）。
+                fdm.set_property_value('fcs/elevator-cmd-norm', -0.5)
             fdm.run()
             t = fdm.get_sim_time()
             w.writerow([round(t,3),
