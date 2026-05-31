@@ -57,6 +57,10 @@ public:
                                   const SensorBundle& bundle,
                                   float dt, bool link_ok);
     Attitude attitude() const { return ahrs_.attitude(); }
+    // 只读状态查询（调试日志/遥测用，零副作用，转发内部子模块）。
+    FlightMode activeMode() const { return modes_.activeMode(); }
+    bool altHoldEngaged() const { return althold_.engaged(); }
+    bool autoTrimLearning() const { return auto_trim_.learning(); }
     void attachBlackboxSink(IBlackboxSink* sink);
     // 返回的 trim 是"下一拍将施加"的值（AutoTrim 在本拍 update() 末尾已更新它）。
     // 取值用于存 NVS / 显示；非本拍实际施加到舵量的值。
