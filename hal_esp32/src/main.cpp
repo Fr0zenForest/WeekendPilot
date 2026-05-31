@@ -21,6 +21,11 @@
 #if WP_HAS_PWM_EXPANDER
 #include "io/pca9685_output.h"
 #endif
+#if WP_HAS_LANDING_GEAR
+#include "nav/landing_gear.h"
+#include "drivers/ina3221.h"
+#include "drivers/gear_actuators.h"
+#endif
 
 // 调试日志：默认开（开发期）。正式飞行可在 platformio.ini build_flags 加 -DWP_DEBUG_LOG=0 关闭。
 #ifndef WP_DEBUG_LOG
@@ -44,6 +49,21 @@ static wp::CompositeServoOutput g_out;
 static wp::LedcOutput g_ledc(kServoPins, wp::kNumServos);
 #if WP_HAS_PWM_EXPANDER
 static wp::Pca9685Output g_pca(Wire, wp::kAddrPwmExpander);
+#endif
+#if WP_HAS_LANDING_GEAR
+static wp::LandingGear g_gear;
+static wp::Ina3221 g_ina(Wire, wp::kAddrCurrentSense);
+// 起落架输出通道（全局逻辑索引）：开 PCA9685 时用第一个扩展口（=kNumServos）；
+// 没开扩展时退回 LEDC 空闲口 7（标准布局 0~3 主舵面，7 空闲）。
+#if WP_HAS_PWM_EXPANDER
+constexpr int kGearOutCh = wp::kNumServos;   // PCA9685 的 0 号口
+#else
+constexpr int kGearOutCh = 7;                // LEDC 空闲口
+#endif
+static wp::GearServo g_gear_act(g_out, kGearOutCh);
+constexpr int    kGearCurrentCh = 0;       // INA3221 通道 0
+constexpr float  kGearShuntOhm  = 0.01f;   // 采样电阻（实物标定）
+constexpr uint8_t kGearRcChannel = 8;      // ch9：收放拨杆（0-based 索引 8）
 #endif
 static const int kCrsfRxPin = 44;
 static const int kCrsfTxPin = 43;
@@ -115,6 +135,15 @@ void setup() {
 #endif
     g_out.begin();
     g_out.setFrequencyHz(50);   // D2：默认 50Hz，将来从 NVS config 读
+#if WP_HAS_LANDING_GEAR
+    {
+        wp::LandingGearConfig gc;   // 默认 enabled=false（全写好先不使能）
+        g_gear.setConfig(gc);
+        g_ina.begin();
+        // 上电不主动驱动：状态从默认 Retracted 起（将来从 NVS gear_last_state 恢复）。
+        pinMode(wp::kPinGearAlert, INPUT_PULLUP);
+    }
+#endif
     // 状态灯转暗绿：系统初始化完成、即将进入控制循环。低亮度防晃眼。
     neopixelWrite(wp::kPinStatusLed, 0, 12, 0);   // 暗绿
 }
@@ -151,6 +180,19 @@ void loop() {
 
     wp::ServoCommand out = g_controller.updateFromBundle(ch, bundle, 0.001f, link_ok);
     for (int i = 0; i < wp::kNumServos; ++i) g_out.writeUs(i, out.servo[i]);
+#if WP_HAS_LANDING_GEAR
+    {
+        wp::LandingGearInputs gi;
+        // 收放指令：拨杆 > 1500µs 视为"放下"。link 丢失时维持上一指令（不强制收放）。
+        gi.deploy_cmd = link_ok ? (g_channels[kGearRcChannel] > 1500) : g_gear.state() == wp::GearState::Deployed;
+        float amps = 0.0f;
+        if (g_ina.readCurrent(kGearCurrentCh, kGearShuntOhm, amps)) gi.current_a = amps;
+        gi.alert = (digitalRead(wp::kPinGearAlert) == LOW);   // INA3221 ALERT 低有效
+        gi.dt = 0.002f;   // 与 loop delay(2) 一致量级
+        wp::LandingGearOutput go = g_gear.update(gi);
+        g_gear_act.apply(go.drive);
+    }
+#endif
 #if WP_DEBUG_LOG
     static uint32_t last_log_ms = 0;
     uint32_t now = millis();
