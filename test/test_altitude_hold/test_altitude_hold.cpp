@@ -90,6 +90,32 @@ void test_climb_target_clamped() {
     TEST_ASSERT_TRUE(pc > 0.0f);
 }
 
+// 油门能量耦合：命令爬升(俯仰>0) -> 油门前馈增量>0(同号)，符号一致。
+void test_throttle_delta_follows_pitch() {
+    AltitudeHold ah;
+    float pc = 0.0f;
+    ah.update(true, true, 100.0f, 0.0f, 0.02f, pc);   // 锁 100m
+    ah.update(true, true, 90.0f, 0.0f, 0.02f, pc);    // 掉到 90m -> 抬头爬升
+    TEST_ASSERT_TRUE(pc > 0.0f);                       // 俯仰指令为正
+    TEST_ASSERT_TRUE(ah.throttleDelta() > 0.0f);       // 油门前馈同号
+    // 升到 110m -> 低头下降 -> 油门增量为负
+    AltitudeHold ah2;
+    float pc2 = 0.0f;
+    ah2.update(true, true, 100.0f, 0.0f, 0.02f, pc2);
+    ah2.update(true, true, 110.0f, 0.0f, 0.02f, pc2);
+    TEST_ASSERT_TRUE(ah2.throttleDelta() < 0.0f);
+}
+
+// 未接管时油门增量为 0（不动油门）。
+void test_throttle_delta_zero_when_disengaged() {
+    AltitudeHold ah;
+    float pc = 0.0f;
+    ah.update(false, true, 100.0f, 0.0f, 0.02f, pc);   // 未请求接管
+    TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0f, ah.throttleDelta());
+    ah.update(true, false, 100.0f, 0.0f, 0.02f, pc);   // 气压无效
+    TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0f, ah.throttleDelta());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_not_engaged_when_no_request);
@@ -99,5 +125,7 @@ int main() {
     RUN_TEST(test_pilot_override_releases_and_relatches);
     RUN_TEST(test_cascade_pitch_sign);
     RUN_TEST(test_climb_target_clamped);
+    RUN_TEST(test_throttle_delta_follows_pitch);
+    RUN_TEST(test_throttle_delta_zero_when_disengaged);
     return UNITY_END();
 }

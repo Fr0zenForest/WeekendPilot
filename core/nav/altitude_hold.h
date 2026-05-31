@@ -12,6 +12,9 @@ struct AltHoldConfig {
     PidGains climb_gains{0.08f, 0.03f, 0.0f};  // 爬升率误差(m/s) -> 归一化俯仰指令
     float climb_rate_cutoff_hz = 2.0f;  // 爬升率估计 PT1 截止频率
     float pitch_deadband = 0.10f;  // 飞手俯仰杆死区：超出则交还手动并重锁目标
+    // 油门能量耦合（俯仰->油门前馈，参考 INAV fw_p2t）。纯升降舵定高在固定油门下
+    // 拉杆抬头会耗尽空速→失速性下沉；命令爬升时按俯仰指令补油门维持能量。
+    float kff_pitch_throttle = 0.5f;  // 俯仰指令[-1,1] -> 油门增量[-0.5,0.5]
 };
 
 // 气压定高层。每周期 update() 一次；仅在请求接管 & 气压有效时驱动俯仰。
@@ -34,6 +37,9 @@ public:
     bool  engaged() const { return engaged_; }
     float targetAltitude() const { return target_alt_m_; }
     float climbRate() const { return climb_filt_.value(); }
+    // 油门前馈增量 [-kff,+kff]，叠加到基准油门。仅上一次 update() 返回 true 时有效，
+    // 否则为 0（未接管不动油门）。
+    float throttleDelta() const { return throttle_delta_; }
 
 private:
     AltHoldConfig cfg_;
@@ -43,6 +49,7 @@ private:
     bool   have_last_   = false;
     float  last_alt_m_  = 0.0f;
     float  target_alt_m_= 0.0f;
+    float  throttle_delta_ = 0.0f;  // 上次 update 的油门前馈增量
 };
 
 }  // namespace wp

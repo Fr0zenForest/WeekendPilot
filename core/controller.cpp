@@ -43,8 +43,9 @@ ServoCommand Controller::update(const ControlInput& in) {
                        && mode == FlightMode::Angle
                        && in.channels[cfg_.althold_channel] > kModeRateThresh;
     float ah_pitch = 0.0f;
-    if (althold_.update(althold_req, in.baro.valid, in.baro.altitude_m,
-                        pitch_cmd, in.dt, ah_pitch)) {
+    bool althold_active = althold_.update(althold_req, in.baro.valid, in.baro.altitude_m,
+                                          pitch_cmd, in.dt, ah_pitch);
+    if (althold_active) {
         pitch_cmd = ah_pitch;   // 用定高俯仰指令替换飞手俯仰杆，喂给 Angle 内环
     }
 
@@ -57,8 +58,14 @@ ServoCommand Controller::update(const ControlInput& in) {
     demand[static_cast<int>(MixSource::Pitch)] = pitch_cmd + gain * corr.pitch;
     demand[static_cast<int>(MixSource::Yaw)]   = yaw_cmd   + gain * corr.yaw;
     // 油门：归一化 [0,1]（throttle 通道 us -> 0..1）
-    demand[static_cast<int>(MixSource::Throttle)] =
-        gainFromChannel(in.channels[cfg_.throttle_channel]);
+    float throttle_demand = gainFromChannel(in.channels[cfg_.throttle_channel]);
+    // 定高油门能量耦合：叠加俯仰->油门前馈增量，再夹回 [0,1]。
+    if (althold_active) {
+        throttle_demand += althold_.throttleDelta();
+        if (throttle_demand > 1.0f) throttle_demand = 1.0f;
+        if (throttle_demand < 0.0f) throttle_demand = 0.0f;
+    }
+    demand[static_cast<int>(MixSource::Throttle)] = throttle_demand;
     // 襟翼需求（可选）
     demand[static_cast<int>(MixSource::Flap)] = cfg_.flap_enabled
         ? gainFromChannel(in.channels[cfg_.flap_channel]) : 0.0f;
