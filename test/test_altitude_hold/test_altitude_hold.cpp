@@ -47,11 +47,26 @@ void test_climb_rate_sign_positive() {
     TEST_ASSERT_TRUE(ah.climbRate() > 1.0f);  // 收敛趋近 +2 m/s
 }
 
+// 飞手俯仰杆超死区 -> 交还手动（返回 false），并把目标重锁到当前高度。
+void test_pilot_override_releases_and_relatches() {
+    AltitudeHold ah;
+    float pc = 0.0f;
+    ah.update(true, true, 100.0f, 0.0f, 0.02f, pc);   // 锁 100m
+    // 飞手大幅推杆，飞机此刻在 105m
+    bool drive = ah.update(true, true, 105.0f, /*pilot*/0.6f, 0.02f, pc);
+    TEST_ASSERT_FALSE(drive);                          // 交还手动
+    TEST_ASSERT_FLOAT_WITHIN(1e-2, 105.0f, ah.targetAltitude());  // 重锁
+    // 松杆回中：在 105m 重新接管保持
+    bool drive2 = ah.update(true, true, 105.0f, 0.0f, 0.02f, pc);
+    TEST_ASSERT_TRUE(drive2);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_not_engaged_when_no_request);
     RUN_TEST(test_disengage_when_baro_invalid);
     RUN_TEST(test_engage_latches_target);
     RUN_TEST(test_climb_rate_sign_positive);
+    RUN_TEST(test_pilot_override_releases_and_relatches);
     return UNITY_END();
 }

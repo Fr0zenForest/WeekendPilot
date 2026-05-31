@@ -21,6 +21,7 @@ bool AltitudeHold::update(bool engage_request, bool baro_valid, float altitude_m
         engaged_ = false;
         have_last_ = false;
         climb_pid_.reset();
+        pitch_cmd_out = 0.0f;
         return false;
     }
 
@@ -45,6 +46,7 @@ bool AltitudeHold::update(bool engage_request, bool baro_valid, float altitude_m
     if (pilot_pitch_cmd > cfg_.pitch_deadband || pilot_pitch_cmd < -cfg_.pitch_deadband) {
         target_alt_m_ = altitude_m;
         climb_pid_.reset();
+        pitch_cmd_out = 0.0f;
         return false;
     }
 
@@ -54,6 +56,7 @@ bool AltitudeHold::update(bool engage_request, bool baro_valid, float altitude_m
     if (climb_target < -cfg_.max_climb_mps) climb_target = -cfg_.max_climb_mps;
 
     // 内环：爬升率误差 -> 归一化俯仰指令。误差>0(需爬升) -> 俯仰指令>0(抬头)。
+    // gyro_rate 复用 climb：kd>0 时 D 项阻尼爬升率变化(≈d²alt/dt²)；kd 默认 0。
     pitch_cmd_out = climb_pid_.update(climb_target, climb, climb, dt);
     return true;
 }
