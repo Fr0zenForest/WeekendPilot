@@ -22,7 +22,8 @@ bool Bmp390::readRegs(uint8_t reg, uint8_t* buf, uint8_t n) {
 bool Bmp390::probe() {
     uint8_t id = 0;
     if (!readRegs(bmp390::kRegChipId, &id, 1)) return false;
-    return id == bmp390::kChipId;
+    // 接受 BMP390(0x60) 与 BMP388(0x50)：两者寄存器布局与补偿算法完全一致，仅芯片ID不同。
+    return id == bmp390::kChipId || id == bmp390::kChipIdBmp388;
 }
 
 bool Bmp390::init() {

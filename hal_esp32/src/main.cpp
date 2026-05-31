@@ -79,6 +79,14 @@ void parseCrsfRc(const uint8_t* p) {
 
 void setup() {
     Serial.begin(115200);
+    // 状态灯：开机即红（启动中）。WS2812 用框架内置 neopixelWrite，无需库。
+    neopixelWrite(wp::kPinStatusLed, 40, 0, 0);   // 红，中等亮度
+#if WP_DEBUG_LOG
+    // 原生 USB CDC 需等主机枚举；等 Serial 就绪（最多 ~2s）再打，避免丢开头日志。
+    uint32_t t_usb = millis();
+    while (!Serial && (millis() - t_usb) < 2000) { delay(10); }
+    delay(300);
+#endif
     Serial1.begin(420000, SERIAL_8N1, kCrsfRxPin, kCrsfTxPin);
     for (int i = 0; i < wp::kNumChannels; ++i) g_channels[i] = 1500;
     Wire.begin(wp::kPinI2cSda, wp::kPinI2cScl);
@@ -106,6 +114,8 @@ void setup() {
     Serial.printf("[wp] === running ===\n");
 #endif
     setupPwm();
+    // 状态灯转暗绿：系统初始化完成、即将进入控制循环。低亮度防晃眼。
+    neopixelWrite(wp::kPinStatusLed, 0, 12, 0);   // 暗绿
 }
 
 void loop() {

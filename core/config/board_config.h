@@ -44,4 +44,7 @@ constexpr int kPwmPins[8] = {1, 2, 8, 9, 10, 15, 16, 17};
 constexpr int kPinCrsfRx = 44;
 constexpr int kPinCrsfTx = 43;
 
+// 板载 WS2812 状态灯（DevKitC-1 N8R8/N16R8 在 GPIO48）
+constexpr int kPinStatusLed = 48;
+
 }  // namespace wp

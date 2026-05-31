@@ -6,7 +6,8 @@ namespace wp {
 namespace bmp390 {
     constexpr uint8_t kI2cAddr    = 0x76;
     constexpr uint8_t kI2cAddrAlt = 0x77;
-    constexpr uint8_t kChipId     = 0x60;
+    constexpr uint8_t kChipId     = 0x60;   // BMP390
+    constexpr uint8_t kChipIdBmp388 = 0x50; // BMP388（寄存器+补偿与 390 兼容，仅芯片ID不同）
     constexpr uint8_t kRegChipId  = 0x00;
     constexpr uint8_t kRegErr     = 0x02;
     constexpr uint8_t kRegData0   = 0x04;   // press(3) + temp(3) = 6 字节

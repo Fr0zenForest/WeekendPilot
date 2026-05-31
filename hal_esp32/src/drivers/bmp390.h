@@ -14,7 +14,7 @@ class Bmp390 : public IBarometer {
 public:
     explicit Bmp390(TwoWire& bus, uint8_t addr = bmp390::kI2cAddr)
         : bus_(bus), addr_(addr) {}
-    bool probe() override;   // CHIPID == 0x60
+    bool probe() override;   // CHIPID == 0x60(BMP390) 或 0x50(BMP388，兼容)
     bool init()  override;   // 软复位 + 读 trim + 配置
     bool read(BaroSample& out) override;
 private:
