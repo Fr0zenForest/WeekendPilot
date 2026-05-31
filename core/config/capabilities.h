@@ -32,6 +32,12 @@
   #ifndef WP_HAS_BLACKBOX
     #define WP_HAS_BLACKBOX 1
   #endif
+  #ifndef WP_HAS_PWM_EXPANDER
+    #define WP_HAS_PWM_EXPANDER 1
+  #endif
+  #ifndef WP_HAS_LANDING_GEAR
+    #define WP_HAS_LANDING_GEAR 1
+  #endif
 #endif
 
 // 兜底：任何未被上面或 build_flags 定义的，默认 0（关闭）
@@ -53,6 +59,12 @@
 #ifndef WP_HAS_BLACKBOX
   #define WP_HAS_BLACKBOX 0
 #endif
+#ifndef WP_HAS_PWM_EXPANDER
+  #define WP_HAS_PWM_EXPANDER 0
+#endif
+#ifndef WP_HAS_LANDING_GEAR
+  #define WP_HAS_LANDING_GEAR 0
+#endif
 
 namespace wp {
 // constexpr 镜像：让 core 用 `if constexpr (kHasGps)` 做分支，比裸宏更安全可读。
@@ -61,5 +73,7 @@ constexpr bool kHasBaro     = WP_HAS_BARO;
 constexpr bool kHasMag      = WP_HAS_MAG;
 constexpr bool kHasGps      = WP_HAS_GPS;
 constexpr bool kHasAirspeed = WP_HAS_AIRSPEED;
-constexpr bool kHasBlackbox = WP_HAS_BLACKBOX;
+constexpr bool kHasBlackbox    = WP_HAS_BLACKBOX;
+constexpr bool kHasPwmExpander = WP_HAS_PWM_EXPANDER;
+constexpr bool kHasLandingGear = WP_HAS_LANDING_GEAR;
 }  // namespace wp
