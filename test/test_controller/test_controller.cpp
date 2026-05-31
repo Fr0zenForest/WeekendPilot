@@ -297,6 +297,25 @@ void test_autotrim_enabled_keeps_trim_bounded() {
     TEST_ASSERT_TRUE(c.pitchTrim() <= 0.25f + 1e-6f && c.pitchTrim() >= -0.25f - 1e-6f);
 }
 
+// 只读状态 getter：activeMode 反映通道模式；althold/autotrim 默认 false。
+void test_controller_status_getters() {
+    wp::Controller c;            // 默认配置：althold/autotrim 都关
+    wp::ControlInput in{}; fill_centered(in);
+    in.channels[4] = 1500;       // Angle
+    c.update(in);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)wp::FlightMode::Angle, (uint8_t)c.activeMode());
+    TEST_ASSERT_FALSE(c.altHoldEngaged());
+    TEST_ASSERT_FALSE(c.autoTrimLearning());
+
+    in.channels[4] = 1000;       // Off
+    c.update(in);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)wp::FlightMode::Off, (uint8_t)c.activeMode());
+
+    in.channels[4] = 2000;       // Rate (>1700)
+    c.update(in);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)wp::FlightMode::Rate, (uint8_t)c.activeMode());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_off_mode_is_passthrough);
@@ -316,5 +335,6 @@ int main() {
     RUN_TEST(test_roll_trim_offsets_aileron);
     RUN_TEST(test_autotrim_disabled_keeps_trim_constant);
     RUN_TEST(test_autotrim_enabled_keeps_trim_bounded);
+    RUN_TEST(test_controller_status_getters);
     return UNITY_END();
 }

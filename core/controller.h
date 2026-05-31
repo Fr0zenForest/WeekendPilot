@@ -57,6 +57,11 @@ public:
                                   const SensorBundle& bundle,
                                   float dt, bool link_ok);
     Attitude attitude() const { return ahrs_.attitude(); }
+    // 只读状态查询（调试日志/遥测用，零副作用）。activeMode 返回本拍通道判定的模式
+    // （含 Off/失效拍，与早返回无关，故反映飞手实际拨位，便于排查通道/阈值）。
+    FlightMode activeMode() const { return last_mode_; }
+    bool altHoldEngaged() const { return althold_.engaged(); }
+    bool autoTrimLearning() const { return auto_trim_.learning(); }
     void attachBlackboxSink(IBlackboxSink* sink);
     // 返回的 trim 是"下一拍将施加"的值（AutoTrim 在本拍 update() 末尾已更新它）。
     // 取值用于存 NVS / 显示；非本拍实际施加到舵量的值。
@@ -75,6 +80,7 @@ private:
     Blackbox blackbox_;
     IBlackboxSink* bb_sink_ = nullptr;
     uint32_t frame_t_ms_ = 0;
+    FlightMode last_mode_ = FlightMode::Off;   // 上一拍通道判定模式（供 activeMode() 调试查询）
 };
 
 }  // namespace wp
