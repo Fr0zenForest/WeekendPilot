@@ -5,6 +5,10 @@
 
 namespace wp {
 
+static inline float clampf(float v, float lim) {
+    return v > lim ? lim : (v < -lim ? -lim : v);
+}
+
 static constexpr float DEG2RAD = 0.017453292519943295f;
 static constexpr float RAD2DEG = 57.29577951308232f;
 
@@ -51,9 +55,9 @@ void AhrsMahony::update6DOF(float gx, float gy, float gz,
         const float halfez = (ax * halfvy - ay * halfvx);
 
         if (two_ki_ > 0.0f) {
-            ifb_x_ += two_ki_ * halfex * dt;
-            ifb_y_ += two_ki_ * halfey * dt;
-            ifb_z_ += two_ki_ * halfez * dt;
+            ifb_x_ = clampf(ifb_x_ + two_ki_ * halfex * dt, ifb_limit_);
+            ifb_y_ = clampf(ifb_y_ + two_ki_ * halfey * dt, ifb_limit_);
+            ifb_z_ = clampf(ifb_z_ + two_ki_ * halfez * dt, ifb_limit_);
             gx += ifb_x_; gy += ifb_y_; gz += ifb_z_;
         } else {
             ifb_x_ = ifb_y_ = ifb_z_ = 0.0f;
@@ -108,9 +112,9 @@ void AhrsMahony::update9DOF(float gx, float gy, float gz,
         const float halfez = (ax*halfvy - ay*halfvx) + (mx*halfwy - my*halfwx);
 
         if (two_ki_ > 0.0f) {
-            ifb_x_ += two_ki_ * halfex * dt;
-            ifb_y_ += two_ki_ * halfey * dt;
-            ifb_z_ += two_ki_ * halfez * dt;
+            ifb_x_ = clampf(ifb_x_ + two_ki_ * halfex * dt, ifb_limit_);
+            ifb_y_ = clampf(ifb_y_ + two_ki_ * halfey * dt, ifb_limit_);
+            ifb_z_ = clampf(ifb_z_ + two_ki_ * halfez * dt, ifb_limit_);
             gx += ifb_x_; gy += ifb_y_; gz += ifb_z_;
         } else {
             ifb_x_ = ifb_y_ = ifb_z_ = 0.0f;
