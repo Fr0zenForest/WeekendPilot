@@ -47,7 +47,11 @@ void test_build_frame_cap_guard() {
     TEST_ASSERT_EQUAL_INT(0, n);
 }
 
-// 0x1E 姿态：roll=0.5 pitch=-0.25 yaw=1.0 rad -> int16 5000/-2500/10000 大端
+// 0x1E 姿态：CRSF 标准 payload 顺序 = pitch,roll,yaw。
+// 调用 encodeAttitude(roll=0.5, pitch=-0.25, yaw=1.0)：
+//   slot0-1 = pitch -0.25 -> -2500 = 0xF63C
+//   slot2-3 = roll   0.5  ->  5000 = 0x1388
+//   slot4-5 = yaw    1.0  -> 10000 = 0x2710
 void test_encode_attitude_vector() {
     uint8_t out[kCrsfMaxFrame];
     int n = encodeAttitude(0.5f, -0.25f, 1.0f, out, sizeof(out));
@@ -55,21 +59,23 @@ void test_encode_attitude_vector() {
     TEST_ASSERT_EQUAL_HEX8(0xC8, out[0]);
     TEST_ASSERT_EQUAL_HEX8(0x08, out[1]);     // len=type+6+crc=8
     TEST_ASSERT_EQUAL_HEX8(0x1E, out[2]);
-    TEST_ASSERT_EQUAL_HEX8(0x13, out[3]);     // roll 5000 = 0x1388
-    TEST_ASSERT_EQUAL_HEX8(0x88, out[4]);
-    TEST_ASSERT_EQUAL_HEX8(0xF6, out[5]);     // pitch -2500 = 0xF63C
-    TEST_ASSERT_EQUAL_HEX8(0x3C, out[6]);
+    TEST_ASSERT_EQUAL_HEX8(0xF6, out[3]);     // pitch -2500 = 0xF63C
+    TEST_ASSERT_EQUAL_HEX8(0x3C, out[4]);
+    TEST_ASSERT_EQUAL_HEX8(0x13, out[5]);     // roll 5000 = 0x1388
+    TEST_ASSERT_EQUAL_HEX8(0x88, out[6]);
     TEST_ASSERT_EQUAL_HEX8(0x27, out[7]);     // yaw 10000 = 0x2710
     TEST_ASSERT_EQUAL_HEX8(0x10, out[8]);
-    TEST_ASSERT_EQUAL_HEX8(0x7E, out[9]);     // crc
+    TEST_ASSERT_EQUAL_HEX8(0x74, out[9]);     // crc
 }
 
-// 负角符号：roll=-0.25 -> -2500 = 0xF63C（确认 int16 符号摆放）
+// 负角符号：roll=-0.25 -> -2500 = 0xF63C，落在 roll 槽(slot2-3 = out[5]/out[6])
 void test_encode_attitude_negative_sign() {
     uint8_t out[kCrsfMaxFrame];
     encodeAttitude(-0.25f, 0.0f, 0.0f, out, sizeof(out));
-    TEST_ASSERT_EQUAL_HEX8(0xF6, out[3]);
-    TEST_ASSERT_EQUAL_HEX8(0x3C, out[4]);
+    TEST_ASSERT_EQUAL_HEX8(0x00, out[3]);     // pitch 0 (slot0-1)
+    TEST_ASSERT_EQUAL_HEX8(0x00, out[4]);
+    TEST_ASSERT_EQUAL_HEX8(0xF6, out[5]);     // roll -2500 (slot2-3)
+    TEST_ASSERT_EQUAL_HEX8(0x3C, out[6]);
 }
 
 // 0x21 飞行模式 "ANGL" -> payload "ANGL\0"

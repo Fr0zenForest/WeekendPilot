@@ -41,9 +41,11 @@ static int16_t rad_to_i16(float rad) {
 
 int encodeAttitude(float roll_rad, float pitch_rad, float yaw_rad,
                    uint8_t* out, int cap) {
+    // CRSF 0x1E payload 顺序 = pitch, roll, yaw（int16 大端 rad×10000）。
+    // EdgeTX 按固定字节偏移解码：bytes0-1=pitch / 2-3=roll / 4-5=yaw。
     uint8_t payload[6];
-    put_i16_be(payload + 0, rad_to_i16(roll_rad));
-    put_i16_be(payload + 2, rad_to_i16(pitch_rad));
+    put_i16_be(payload + 0, rad_to_i16(pitch_rad));
+    put_i16_be(payload + 2, rad_to_i16(roll_rad));
     put_i16_be(payload + 4, rad_to_i16(yaw_rad));
     return buildFrame(kCrsfSyncAddr, 0x1E, payload, 6, out, cap);
 }
