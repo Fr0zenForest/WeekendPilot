@@ -19,6 +19,8 @@ struct StabConfig {
     float max_rate_yaw_dps    = 90.0f;
     float pitch_offset_deg    = 3.0f;   // 平飞迎角补偿
     float blend_ms            = 200.0f; // 模式切换过渡
+    // 预留：ahrs_ki / ahrs_bias_limit —— 将来实物调参提到 config 时在此加字段。
+    // 当前经 AhrsMahony::setKi/setBiasLimit + 代码默认配置；注意 sizeof(ControllerConfig) 余量(现 226/255)。
 };
 
 // 三轴归一化修正量（叠加到手动舵量之前）

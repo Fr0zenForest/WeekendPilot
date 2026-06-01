@@ -1,7 +1,7 @@
 # Mahony 陀螺零偏估计（开 ki + anti-windup 护栏）— 设计文档
 
 - 日期：2026-06-01
-- 状态：设计待评审
+- 状态：已实现（PC 单测 test_ahrs 9 例 + 26 套全绿；SITL recover 场景与 main 逐字节一致，证 ki 默认关零回归）
 - 关联：[[weekendpilot-ahrs-observability]]、[[weekendpilot-dev-progress]]、主设计 `docs/superpowers/specs/2026-05-30-weekendpilot-design.md`
 - 定位：估计层小改（B）。源于评估"我们飞控里有没有 EKF/UKF/ADRC"——结论是没有、当前刻意用 Mahony+PID；EKF/UKF 现阶段无可兑现收益（无 GPS、不做导航），UKF 纯刷参数表，ADRC 唯一值得做但作为单轴实验（A，另起一轮）。本轮 B 是 0 成本摘果子：把 Mahony 已写好但被关掉的零偏估计能力（ki）开成可调，并补上它缺的 anti-windup 护栏。
 
@@ -36,7 +36,7 @@ EKF/UKF/ADRC 的完整评估见对话记录；本 spec 只做 B。
 - 不改 `two_ki_` 默认值（仍 `2.0f * 0.0f`）。现有行为/测试/基线零变动。
 
 ### 2.3 ControllerConfig 预留位（不占空间）
-- 在 `StabConfig`（`core/modes/stab_mode.h` 内，已被 ControllerConfig 持有）加一行注释占位，例如：
+- 在 `StabConfig`（`core/modes/mode_controller.h` 内，已被 ControllerConfig 持有）加一行注释占位，例如：
   `// 预留：ahrs_ki / ahrs_bias_limit —— 将来实物调参提到 config 时填（注意 sizeof(ControllerConfig) 余量，现 226/255）。`
 - 不加实际字段。sizeof 不变，kConfigVersion 不升。
 
@@ -74,5 +74,5 @@ EKF/UKF/ADRC 的完整评估见对话记录；本 spec 只做 B。
 - `ahrs_mahony.h:11` `setKi` → 已存在，复用。
 - `ahrs_mahony.h:26-31` 成员区 → 加 `ifb_limit_`。
 - `ahrs_mahony.cpp:53-60` / `:110-117` 积分块 → 后接限幅。
-- `core/modes/stab_mode.h` StabConfig → 注释预留位。
+- `core/modes/mode_controller.h` StabConfig → 注释预留位。
 - `test/test_ahrs/test_ahrs.cpp` → 追加 3 测试 + 注册。
