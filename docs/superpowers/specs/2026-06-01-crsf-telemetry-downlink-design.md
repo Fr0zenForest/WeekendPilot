@@ -1,7 +1,7 @@
 # CRSF 遥测下行子系统 — 设计文档
 
 - 日期：2026-06-01
-- 状态：设计待评审
+- 状态：已实现（PC 测试 26 套全绿 + 板载门控开/关编译通过）
 - 关联：[[weekendpilot-dev-progress]]、[[weekendpilot-board-flash-serial]]、起落架设计 `docs/superpowers/specs/2026-06-01-pwm-output-landing-gear-design.md`
 - 阶段定位：阶段 4 起步（WiFi WebUI 的替代/前置——飞机内无法接飞控，回传只能走遥控器）
 

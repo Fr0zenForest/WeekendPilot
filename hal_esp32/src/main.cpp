@@ -26,6 +26,10 @@
 #include "drivers/ina3221.h"
 #include "drivers/gear_actuators.h"
 #endif
+#if WP_HAS_TELEMETRY
+#include "telemetry/crsf_telem.h"
+#include "telemetry/crsf_telem_tx.h"
+#endif
 
 // 调试日志：默认开（开发期）。正式飞行可在 platformio.ini build_flags 加 -DWP_DEBUG_LOG=0 关闭。
 #ifndef WP_DEBUG_LOG
@@ -72,6 +76,18 @@ static const uint8_t CRSF_ADDR = 0xC8;
 static const uint8_t CRSF_FRAMETYPE_RC = 0x16;
 
 wp::Controller g_controller;
+#if WP_HAS_TELEMETRY
+static wp::CrsfTelemetryTx g_telem(Serial1);   // 复用 CRSF UART（TX=GPIO43）
+// FlightMode -> 4 字符模式串（CRSF 0x21 帧）
+static const char* flightModeStr(wp::FlightMode m) {
+    switch (m) {
+        case wp::FlightMode::Angle: return "ANGL";
+        case wp::FlightMode::Rate:  return "RATE";
+        case wp::FlightMode::Off:
+        default:                    return "OFF ";
+    }
+}
+#endif
 uint8_t  g_buf[64];
 uint16_t g_channels[wp::kNumChannels];
 uint32_t g_lastRcMs = 0;
@@ -216,6 +232,18 @@ void loop() {
         char line[wp::kStatusLineCap];
         wp::formatStatusLine(snap, line, sizeof(line));
         Serial.println(line);
+    }
+#endif
+#if WP_HAS_TELEMETRY
+    {
+        wp::TelemSnapshot ts;
+        wp::Attitude a = g_controller.attitude();
+        const float kDegToRad = 0.01745329252f;   // π/180
+        ts.roll_rad  = a.roll_deg  * kDegToRad;
+        ts.pitch_rad = a.pitch_deg * kDegToRad;
+        ts.yaw_rad   = a.yaw_deg   * kDegToRad;
+        ts.flight_mode = flightModeStr(g_controller.activeMode());
+        g_telem.tick(millis(), ts);   // 半双工：内部每拍至多发一帧
     }
 #endif
     delay(2);
