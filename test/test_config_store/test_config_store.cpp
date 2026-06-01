@@ -108,6 +108,24 @@ void test_load_returns_false_when_empty() {
     TEST_ASSERT_FALSE(store.load(out));
 }
 
+// 新增字段往返：landing_gear + gear_last_state 序列化后能原样读回
+void test_landing_gear_config_roundtrip() {
+    wp::ControllerConfig in;
+    in.landing_gear.enabled = true;
+    in.landing_gear.stall_current_a = 1.5f;
+    in.landing_gear.stall_debounce_ms = 120;
+    in.gear_last_state = 2;   // Deployed
+    uint8_t buf[wp::kConfigBlobSize];
+    uint16_t n = wp::serializeConfig(in, buf, sizeof(buf));
+    TEST_ASSERT_TRUE(n > 0);
+    wp::ControllerConfig out;
+    TEST_ASSERT_TRUE(wp::deserializeConfig(buf, n, out));
+    TEST_ASSERT_TRUE(out.landing_gear.enabled);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4, 1.5f, out.landing_gear.stall_current_a);
+    TEST_ASSERT_EQUAL_UINT16(120, out.landing_gear.stall_debounce_ms);
+    TEST_ASSERT_EQUAL_UINT8(2, out.gear_last_state);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_pc_test_build_enables_all_capabilities);
@@ -119,5 +137,6 @@ int main() {
     RUN_TEST(test_deserialize_rejects_bad_magic);
     RUN_TEST(test_backend_save_load_via_memory);
     RUN_TEST(test_load_returns_false_when_empty);
+    RUN_TEST(test_landing_gear_config_roundtrip);
     return UNITY_END();
 }

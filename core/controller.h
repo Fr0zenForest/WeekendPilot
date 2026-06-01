@@ -9,6 +9,7 @@
 #include "nav/altitude_hold.h"
 #include "nav/auto_trim.h"
 #include "blackbox/blackbox.h"
+#include "nav/landing_gear.h"
 
 namespace wp {
 
@@ -44,6 +45,8 @@ struct ControllerConfig {
     float pitch_trim = 0.0f;
     AutoTrimConfig auto_trim;
     BlackboxConfig blackbox;
+    LandingGearConfig landing_gear;     // 起落架堵转检测（默认 enabled=false）
+    uint8_t gear_last_state = 0;        // 上电恢复：GearState 序号（0=Retracted）
 };
 
 class Controller {

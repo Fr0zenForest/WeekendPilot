@@ -47,4 +47,18 @@ constexpr int kPinCrsfTx = 43;
 // 板载 WS2812 状态灯（DevKitC-1 N8R8/N16R8 在 GPIO48）
 constexpr int kPinStatusLed = 48;
 
+// PCA9685 PWM 扩展（挂主 I2C 总线）。默认地址 0x40；A0~A5 跳线可改。
+constexpr int kAddrPwmExpander = 0x40;
+
+// INA3221 三路电流监测（挂主 I2C 总线）。默认地址 0x40 会撞 PCA9685，故用 0x41。
+// （INA3221 地址 0x40~0x43 由 A0 脚接 GND/VS/SDA/SCL 选）
+constexpr int kAddrCurrentSense = 0x41;
+// INA3221 Critical-Alert 引脚 -> ESP32 GPIO（堵转硬件中断，可选）。
+// GPIO40 当前仅声明 kPinImuInt 未实际使用；若 IMU INT 启用需另选自由脚（实物核对）。
+constexpr int kPinGearAlert = 41;
+
+// 起落架 H 桥方向脚（仅类型 C 裸电机用；类型 B 连续旋转舵机不占）。
+// 单电机 PWM+DIR：PWM 走 CompositeServoOutput，DIR 走此 GPIO。
+constexpr int kPinGearHbridgeDir = 42;
+
 }  // namespace wp
