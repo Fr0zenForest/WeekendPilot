@@ -6,10 +6,10 @@ namespace wp {
 
 struct ControllerConfig;  // 前置声明，避免头循环依赖
 
-// blob 布局：[magic(2) | version(1) | size(1) | payload(memcpy ControllerConfig) | crc16(2)]
+// blob 布局：[magic(2) | version(1) | size(2,小端) | payload(memcpy ControllerConfig) | crc16(2)]
 constexpr uint16_t kConfigMagic   = 0x5750;  // 字母 W,P
-constexpr uint8_t  kConfigVersion = 2;   // was 1: 加 LandingGearConfig + gear_last_state
-constexpr int      kConfigHeaderBytes = 4;
+constexpr uint8_t  kConfigVersion = 3;   // was 2: size 字段 uint8->uint16
+constexpr int      kConfigHeaderBytes = 5;   // magic2 + version1 + size2
 constexpr int      kConfigCrcBytes    = 2;
 
 // blob 上限：头 + payload(sizeof ControllerConfig) + crc。给足余量。
