@@ -134,16 +134,22 @@ void test_ki_estimates_constant_bias() {
     TEST_ASSERT_FLOAT_WITHIN(1.0f, 0.0f, a.pitch_deg);
 }
 
-// 限幅：ki 开 + 极小 bias limit + 持续误差，姿态保持有界不发散（限幅生效）。
-void test_bias_limit_keeps_bounded() {
+// 限幅判别性测试：ki 开 + 极小 bias limit(0.02) + 大零偏(10°/s=0.175rad/s 远超限幅)。
+// 限幅生效时 ifb_ 饱和在 0.02、无法完全对消零偏，kp 平衡残差 -> 稳态 roll 明显非零(~18°)。
+// 若限幅被移除，ifb_ 会涨到 ~0.173 完全对消零偏 -> roll≈0。故"roll 明显非零且有界"
+// 这条断言只在限幅真正生效时成立——移除 clampf 此测试即失败（判别性）。
+void test_bias_limit_clamps_prevents_full_cancel() {
     wp::AhrsMahony ahrs;
-    ahrs.setKi(2.0f * 0.5f);             // 较大 ki，若无限幅 ifb_ 会冲很高
-    ahrs.setBiasLimit(0.02f);            // 很小限幅(rad/s)
+    ahrs.setKi(2.0f * 0.5f);
+    ahrs.setBiasLimit(0.02f);
     wp::ImuSample s = level_imu();
-    s.gyro_x = 10.0f;                    // 大恒定零偏 +10 deg/s
+    s.gyro_x = 10.0f;                    // 大恒定零偏，远超限幅
     for (int i = 0; i < 20000; ++i) ahrs.update(s, 0.001f);
     wp::Attitude a = ahrs.attitude();
-    TEST_ASSERT_TRUE(a.roll_deg > -45.0f && a.roll_deg < 45.0f);
+    // 限幅生效 -> 零偏未被完全对消 -> 稳态 roll 明显非零(仿真 ~18°)
+    TEST_ASSERT_TRUE(a.roll_deg > 10.0f);
+    // 仍有界(不发散到接近 ±90)
+    TEST_ASSERT_TRUE(a.roll_deg < 45.0f);
     TEST_ASSERT_TRUE(a.roll_deg == a.roll_deg);   // 非 NaN
 }
 
@@ -157,6 +163,6 @@ int main() {
     RUN_TEST(test_accel_gate_skips_correction_when_out_of_range);
     RUN_TEST(test_ki_zero_keeps_level_bounded);
     RUN_TEST(test_ki_estimates_constant_bias);
-    RUN_TEST(test_bias_limit_keeps_bounded);
+    RUN_TEST(test_bias_limit_clamps_prevents_full_cancel);
     return UNITY_END();
 }
