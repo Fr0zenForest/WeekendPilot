@@ -5,10 +5,10 @@
 
 namespace wp {
 
-// size 字段是 buf[3]（uint8）。一旦 ControllerConfig 超过 255 字节，该字段截断会
-// 导致 serialize/deserialize 静默错配 —— 届时需把 size 扩成 uint16 并升 version。
-static_assert(sizeof(ControllerConfig) <= 255,
-    "ControllerConfig exceeds uint8 size field; widen size field + bump kConfigVersion");
+// size 字段是 buf[3..4]（uint16 小端）。一旦 ControllerConfig 超过 65535 字节，该字段
+// 截断会导致 serialize/deserialize 静默错配 —— 届时需把 size 扩成 uint32 并升 version。
+static_assert(sizeof(ControllerConfig) <= 65535,
+    "ControllerConfig exceeds uint16 size field; widen size field + bump kConfigVersion");
 static_assert(std::is_trivially_copyable<ControllerConfig>::value,
     "ControllerConfig must stay POD for memcpy serialization; "
     "adding std::string/std::vector etc. breaks the blob format");
@@ -32,7 +32,8 @@ uint16_t serializeConfig(const ControllerConfig& cfg, uint8_t* buf, size_t cap) 
     buf[0] = static_cast<uint8_t>(kConfigMagic & 0xFF);
     buf[1] = static_cast<uint8_t>(kConfigMagic >> 8);
     buf[2] = kConfigVersion;
-    buf[3] = static_cast<uint8_t>(payload);  // 假定 payload <= 255；超则需扩 size 字段
+    buf[3] = static_cast<uint8_t>(payload & 0xFF);   // size 低字节
+    buf[4] = static_cast<uint8_t>(payload >> 8);     // size 高字节
     std::memcpy(buf + kConfigHeaderBytes, &cfg, payload);
     uint16_t crc = crc16_ccitt(buf, kConfigHeaderBytes + payload);
     buf[kConfigHeaderBytes + payload]     = static_cast<uint8_t>(crc & 0xFF);
@@ -47,7 +48,9 @@ bool deserializeConfig(const uint8_t* buf, uint16_t len, ControllerConfig& out) 
     uint16_t magic = static_cast<uint16_t>(buf[0]) | (static_cast<uint16_t>(buf[1]) << 8);
     if (magic != kConfigMagic) return false;
     if (buf[2] != kConfigVersion) return false;
-    if (buf[3] != static_cast<uint8_t>(payload)) return false;
+    uint16_t stored_size = static_cast<uint16_t>(buf[3]) |
+                           (static_cast<uint16_t>(buf[4]) << 8);
+    if (stored_size != payload) return false;
     uint16_t want = crc16_ccitt(buf, kConfigHeaderBytes + payload);
     uint16_t got = static_cast<uint16_t>(buf[kConfigHeaderBytes + payload]) |
                    (static_cast<uint16_t>(buf[kConfigHeaderBytes + payload + 1]) << 8);

@@ -126,6 +126,37 @@ void test_landing_gear_config_roundtrip() {
     TEST_ASSERT_EQUAL_UINT8(2, out.gear_last_state);
 }
 
+// header 现为 5 字节（magic2 + version1 + size2）
+void test_header_is_5_bytes() {
+    TEST_ASSERT_EQUAL_INT(5, wp::kConfigHeaderBytes);
+}
+
+// size 字段为 uint16 小端，记录 payload 字节数
+void test_size_field_uint16_little_endian() {
+    wp::ControllerConfig cfg{};
+    uint8_t buf[wp::kConfigBlobSize];
+    uint16_t n = wp::serializeConfig(cfg, buf, sizeof(buf));
+    TEST_ASSERT_TRUE(n > 0);
+    uint16_t payload = (uint16_t)sizeof(wp::ControllerConfig);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)(payload & 0xFF), buf[3]);   // 低字节
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)(payload >> 8),   buf[4]);   // 高字节
+    TEST_ASSERT_EQUAL_UINT16(5 + payload + 2, n);                 // 5 header + payload + 2 crc
+}
+
+// 旧 v2 格式 blob（4 字节 header）被新 deserialize 拒绝（version 门拦截）
+void test_old_version2_blob_rejected() {
+    wp::ControllerConfig cfg{};
+    uint16_t payload = (uint16_t)sizeof(wp::ControllerConfig);
+    uint8_t buf[wp::kConfigBlobSize];
+    buf[0] = (uint8_t)(wp::kConfigMagic & 0xFF);
+    buf[1] = (uint8_t)(wp::kConfigMagic >> 8);
+    buf[2] = 2;                              // 旧 version
+    buf[3] = (uint8_t)payload;               // 旧单字节 size
+    uint16_t oldlen = 4 + payload + 2;
+    wp::ControllerConfig out{};
+    TEST_ASSERT_FALSE(wp::deserializeConfig(buf, oldlen, out));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_pc_test_build_enables_all_capabilities);
@@ -138,5 +169,8 @@ int main() {
     RUN_TEST(test_backend_save_load_via_memory);
     RUN_TEST(test_load_returns_false_when_empty);
     RUN_TEST(test_landing_gear_config_roundtrip);
+    RUN_TEST(test_header_is_5_bytes);
+    RUN_TEST(test_size_field_uint16_little_endian);
+    RUN_TEST(test_old_version2_blob_rejected);
     return UNITY_END();
 }
