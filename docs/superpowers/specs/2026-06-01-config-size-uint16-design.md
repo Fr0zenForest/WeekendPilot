@@ -1,7 +1,7 @@
 # NVS 配置 size 字段 uint8 → uint16（解除 255 字节上限）— 设计文档
 
 - 日期：2026-06-01
-- 状态：设计待评审
+- 状态：已实现（PC 测试 config_store 12 例 + 26 套全绿；板载编译通过；现有 9 个 config 测试零回归）
 - 关联：[[weekendpilot-dev-progress]]、[[weekendpilot-config-sensor-architecture]]
 - 定位：配置持久化基础设施修复。从 ADRC 实验(A)讨论中分解出来——A 要把 LadrcConfig 加进 ControllerConfig 会撞 255 余量(现 226/255 仅余 29B，起落架/ki/LadrcConfig 都在挤)。本 spec 独立先做，解除全局配置容量焦虑；ADRC 实验另起一轮，建在此之上。
 
